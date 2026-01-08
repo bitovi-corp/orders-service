@@ -195,6 +195,7 @@ paths:
                   type: string
                   format: uuid
                   description: Unique identifier for the user placing the order
+                  required: true
                 products:
                   type: array
                   description: List of products in the order with their quantities

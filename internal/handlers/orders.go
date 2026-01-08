@@ -62,12 +62,16 @@ func CreateOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Validate userId (optional but if provided must be valid UUID)
-	if requestBody.UserID != "" {
-		if _, err := uuid.Parse(requestBody.UserID); err != nil {
-			writeErrorResponse(w, http.StatusBadRequest, "INVALID_USER_ID", "Invalid user ID format", "User ID must be a valid UUID")
-			return
-		}
+	// Validate userId is required
+	if requestBody.UserID == "" {
+		writeErrorResponse(w, http.StatusBadRequest, "MISSING_USER_ID", "User ID is required", "")
+		return
+	}
+
+	// Validate userId format
+	if _, err := uuid.Parse(requestBody.UserID); err != nil {
+		writeErrorResponse(w, http.StatusBadRequest, "INVALID_USER_ID", "Invalid user ID format", "User ID must be a valid UUID")
+		return
 	}
 
 	// Validate products

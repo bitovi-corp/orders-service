@@ -106,6 +106,7 @@ func TestCreateOrder(t *testing.T) {
 		{
 			name: "Valid order creation",
 			requestBody: map[string]interface{}{
+				"userId": "750e8400-e29b-41d4-a716-446655440001", // johndoe
 				"products": []map[string]interface{}{
 					{"productId": "550e8400-e29b-41d4-a716-446655440000", "quantity": 2},
 				},
@@ -154,6 +155,16 @@ func TestCreateOrder(t *testing.T) {
 			},
 		},
 		{
+			name: "Missing userId returns 400",
+			requestBody: map[string]interface{}{
+				"products": []map[string]interface{}{
+					{"productId": "550e8400-e29b-41d4-a716-446655440000", "quantity": 1},
+				},
+			},
+			expectedStatus: http.StatusBadRequest,
+			checkResponse:  nil,
+		},
+		{
 			name: "Invalid userId format returns 400",
 			requestBody: map[string]interface{}{
 				"userId": "invalid-uuid",
@@ -167,6 +178,7 @@ func TestCreateOrder(t *testing.T) {
 		{
 			name: "Invalid productId returns 500",
 			requestBody: map[string]interface{}{
+				"userId": "750e8400-e29b-41d4-a716-446655440001",
 				"products": []map[string]interface{}{
 					{"productId": "999e9999-e99b-99d9-a999-999999999999", "quantity": 1},
 				},
@@ -175,8 +187,11 @@ func TestCreateOrder(t *testing.T) {
 			checkResponse:  nil,
 		},
 		{
-			name:           "Empty products array returns 400",
-			requestBody:    map[string]interface{}{"products": []interface{}{}},
+			name: "Empty products array returns 400",
+			requestBody: map[string]interface{}{
+				"userId":   "750e8400-e29b-41d4-a716-446655440001",
+				"products": []interface{}{},
+			},
 			expectedStatus: http.StatusBadRequest,
 			checkResponse:  nil,
 		},

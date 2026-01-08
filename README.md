@@ -46,11 +46,11 @@ example-go-server/
 - Pre-configured catalog with 5 sample products
 
 ### Order Management
-- Create orders with multiple products
+- Create orders with multiple products (requires userId)
 - Update order products (additive/subtractive quantities)
 - Submit orders to lock for processing
 - Track order status (PENDING → PROCESSING → SHIPPED → DELIVERED)
-- Cancel orders
+- Cancel orders via submit endpoint
 - Automatic loyalty points calculation on order submission (1 point per $10)
 
 ### Authentication & Middleware
@@ -104,11 +104,10 @@ The complete API specification is defined in `api/openapi.yaml`. Key endpoints:
 - `GET /health` - Server health check (no auth required)
 
 ### Users
-- `POST /users` - Create a new user
-- `GET /users/{userId}` - Get user with their orders
-- `GET /users/{userId}/loyalty-points` - Get user's loyalty points
-- `POST /users/{userId}/loyalty-points/redeem` - Redeem loyalty points
-- `DELETE /users/{userId}` - Delete user and cancel pending orders
+- `POST /user` - Create a new user
+- `GET /user/{userId}` - Get user with their orders
+- `GET /user/{userId}/points` - Get user's loyalty points
+- `DELETE /user/{userId}` - Delete user and cancel pending orders
 
 ### Products
 - `GET /products` - List all products
@@ -116,11 +115,10 @@ The complete API specification is defined in `api/openapi.yaml`. Key endpoints:
 
 ### Orders
 - `GET /orders` - List all orders
-- `POST /orders` - Create a new order (optionally associate with user)
+- `POST /orders` - Create a new order (requires userId)
 - `GET /orders/{orderId}` - Get order details
 - `PATCH /orders/{orderId}` - Update order products (PENDING orders only)
-- `POST /orders/{orderId}/submit` - Submit order for processing
-- `DELETE /orders/{orderId}` - Cancel an order
+- `POST /orders/{orderId}/submit` - Submit or cancel an order
 
 ### Authentication
 
@@ -255,10 +253,9 @@ func TestSomething(t *testing.T) {
 ### Middleware Pattern
 All protected routes use middleware composition:
 ```go
-http.Handle("/endpoint", 
-    middleware.AuthMiddleware(
-        middleware.LoggingMiddleware(
-            http.HandlerFunc(handlers.Handler))))
+http.HandleFunc("/endpoint", 
+    middleware.LoggingMiddleware(
+        middleware.AuthMiddleware(handlers.Handler)))
 ```
 
 ### Error Response Standardization
