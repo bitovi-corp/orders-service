@@ -1,2 +1,4 @@
+github.com/bitovi-corp/auth-middleware-go v0.1.0 h1:KneHbhWginXFKWE7g5uX6mUaZZUWdal9pMz+bkd0Ack=
+github.com/bitovi-corp/auth-middleware-go v0.1.0/go.mod h1:IGyhYu0G35UuILSiC93m02RztyWan9L4KfuoTq0a88I=
 github.com/google/uuid v1.6.0 h1:NIvaJDMOsjHA8n1jAhLSgzrAzy1Hgr+hNrb57e+94F0=
 github.com/google/uuid v1.6.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
