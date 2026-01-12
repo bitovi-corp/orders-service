@@ -2,6 +2,7 @@ package integration
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -26,12 +27,37 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
+// createMockJWT creates a mock JWT token with the given claims for testing
+func createMockJWT(subject, email string, roles []string) string {
+	// Create header
+	header := map[string]string{"alg": "HS256", "typ": "JWT"}
+	headerJSON, _ := json.Marshal(header)
+	headerB64 := base64.RawURLEncoding.EncodeToString(headerJSON)
+
+	// Create payload
+	claims := map[string]interface{}{
+		"sub":   subject,
+		"email": email,
+		"roles": roles,
+	}
+	payloadJSON, _ := json.Marshal(claims)
+	payloadB64 := base64.RawURLEncoding.EncodeToString(payloadJSON)
+
+	// Create mock signature (not verified in mock mode)
+	signature := base64.RawURLEncoding.EncodeToString([]byte("mock-signature-for-integration-tests"))
+
+	return headerB64 + "." + payloadB64 + "." + signature
+}
+
 // TestOrderWorkflow implements the complete order workflow integration test
 // as specified in order_workflow_test.md
 func TestOrderWorkflow(t *testing.T) {
 	// Reset mock data at the start of the test
 	services.ResetOrderMockData()
 	services.ResetUserMockData()
+	
+	// Create a mock JWT token for testing
+	mockToken := createMockJWT("test-user-123", "test@example.com", []string{"user", "admin"})
 	
 	// Helper function to make authenticated requests
 	makeRequest := func(method, path string, body interface{}) *httptest.ResponseRecorder {
@@ -46,7 +72,7 @@ func TestOrderWorkflow(t *testing.T) {
 
 		req := httptest.NewRequest(method, path, reqBody)
 		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("Authorization", "Bearer test_token_for_integration_test_12345")
+		req.Header.Set("Authorization", "Bearer "+mockToken)
 
 		rr := httptest.NewRecorder()
 

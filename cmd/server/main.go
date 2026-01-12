@@ -19,8 +19,8 @@ func main() {
 	http.HandleFunc("/products/", middleware.LoggingMiddleware(authmiddleware.AuthMiddleware(handlers.GetProductByID)))
 	
 	// Order endpoints - auth required
-	http.HandleFunc("/orders/", middleware.LoggingMiddleware(authmiddleware.AuthMiddleware(handleOrdersWithID)))
-	http.HandleFunc("/orders", middleware.LoggingMiddleware(authmiddleware.AuthMiddleware(handleOrders)))
+	http.HandleFunc("/orders/", middleware.LoggingMiddleware(authmiddleware.RequireRoles("admin")(handleOrdersWithID)))
+	http.HandleFunc("/orders", middleware.LoggingMiddleware(authmiddleware.RequireRoles("admin")(handleOrders)))
 	
 	// User endpoints - auth required
 	http.HandleFunc("/user", middleware.LoggingMiddleware(authmiddleware.AuthMiddleware(handlers.CreateUser)))
