@@ -9,6 +9,7 @@ import (
 	"os"
 	"testing"
 
+	authmiddleware "github.com/bitovi-corp/auth-middleware-go/middleware"
 	"github.com/Bitovi/example-go-server/internal/handlers"
 	"github.com/Bitovi/example-go-server/internal/middleware"
 	"github.com/Bitovi/example-go-server/internal/services"
@@ -52,21 +53,21 @@ func TestOrderWorkflow(t *testing.T) {
 		// Route to appropriate handler with middleware
 		switch {
 		case path == "/user":
-			middleware.LoggingMiddleware(middleware.AuthMiddleware(handlers.CreateUser))(rr, req)
+			middleware.LoggingMiddleware(authmiddleware.AuthMiddleware(handlers.CreateUser))(rr, req)
 		case method == "POST" && len(path) > 7 && path[:7] == "/orders" && path[len(path)-7:] == "/submit":
-			middleware.LoggingMiddleware(middleware.AuthMiddleware(handlers.CancelOrSubmitOrder))(rr, req)
+			middleware.LoggingMiddleware(authmiddleware.AuthMiddleware(handlers.CancelOrSubmitOrder))(rr, req)
 		case method == "POST" && path == "/orders":
-			middleware.LoggingMiddleware(middleware.AuthMiddleware(handlers.CreateOrder))(rr, req)
+			middleware.LoggingMiddleware(authmiddleware.AuthMiddleware(handlers.CreateOrder))(rr, req)
 		case method == "GET" && len(path) > 8 && path[:8] == "/orders/":
-			middleware.LoggingMiddleware(middleware.AuthMiddleware(handlers.GetOrderByID))(rr, req)
+			middleware.LoggingMiddleware(authmiddleware.AuthMiddleware(handlers.GetOrderByID))(rr, req)
 		case method == "PATCH" && len(path) > 8 && path[:8] == "/orders/":
-			middleware.LoggingMiddleware(middleware.AuthMiddleware(handlers.UpdateOrder))(rr, req)
+			middleware.LoggingMiddleware(authmiddleware.AuthMiddleware(handlers.UpdateOrder))(rr, req)
 		case len(path) > 7 && path[len(path)-7:] == "/points":
-			middleware.LoggingMiddleware(middleware.AuthMiddleware(handlers.GetUserLoyaltyPoints))(rr, req)
+			middleware.LoggingMiddleware(authmiddleware.AuthMiddleware(handlers.GetUserLoyaltyPoints))(rr, req)
 		case method == "DELETE" && len(path) > 6 && path[:6] == "/user/":
-			middleware.LoggingMiddleware(middleware.AuthMiddleware(handlers.DeleteUser))(rr, req)
+			middleware.LoggingMiddleware(authmiddleware.AuthMiddleware(handlers.DeleteUser))(rr, req)
 		case method == "GET" && len(path) > 6 && path[:6] == "/user/":
-			middleware.LoggingMiddleware(middleware.AuthMiddleware(handlers.GetUserWithOrders))(rr, req)
+			middleware.LoggingMiddleware(authmiddleware.AuthMiddleware(handlers.GetUserWithOrders))(rr, req)
 		default:
 			t.Fatalf("No handler found for %s %s", method, path)
 		}

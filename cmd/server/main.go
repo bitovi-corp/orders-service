@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 
+	authmiddleware "github.com/bitovi-corp/auth-middleware-go/middleware"
 	"github.com/Bitovi/example-go-server/internal/handlers"
 	"github.com/Bitovi/example-go-server/internal/middleware"
 )
@@ -14,16 +15,16 @@ func main() {
 	http.HandleFunc("/health", middleware.LoggingMiddleware(handlers.HealthCheck))
 	
 	// Product endpoints - auth required
-	http.HandleFunc("/products", middleware.LoggingMiddleware(middleware.AuthMiddleware(handlers.ListProducts)))
-	http.HandleFunc("/products/", middleware.LoggingMiddleware(middleware.AuthMiddleware(handlers.GetProductByID)))
+	http.HandleFunc("/products", middleware.LoggingMiddleware(authmiddleware.AuthMiddleware(handlers.ListProducts)))
+	http.HandleFunc("/products/", middleware.LoggingMiddleware(authmiddleware.AuthMiddleware(handlers.GetProductByID)))
 	
 	// Order endpoints - auth required
-	http.HandleFunc("/orders/", middleware.LoggingMiddleware(middleware.AuthMiddleware(handleOrdersWithID)))
-	http.HandleFunc("/orders", middleware.LoggingMiddleware(middleware.AuthMiddleware(handleOrders)))
+	http.HandleFunc("/orders/", middleware.LoggingMiddleware(authmiddleware.AuthMiddleware(handleOrdersWithID)))
+	http.HandleFunc("/orders", middleware.LoggingMiddleware(authmiddleware.AuthMiddleware(handleOrders)))
 	
 	// User endpoints - auth required
-	http.HandleFunc("/user", middleware.LoggingMiddleware(middleware.AuthMiddleware(handlers.CreateUser)))
-	http.HandleFunc("/user/", middleware.LoggingMiddleware(middleware.AuthMiddleware(handleUserRoutes)))
+	http.HandleFunc("/user", middleware.LoggingMiddleware(authmiddleware.AuthMiddleware(handlers.CreateUser)))
+	http.HandleFunc("/user/", middleware.LoggingMiddleware(authmiddleware.AuthMiddleware(handleUserRoutes)))
 
 	// Start server
 	port := ":8080"

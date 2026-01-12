@@ -22,6 +22,7 @@ paths:
   /health:
     get:
       summary: Health check endpoint
+      operationId: healthCheck
       responses:
         '200':
           description: Server is healthy
@@ -34,12 +35,12 @@ paths:
 
         **Middlewares applied:**
         - Authentication required
-      operationID: listProducts
+      operationId: listProducts
       tags:
         - Products
       security:
         - bearerAuth: []
-      Parameters:
+      parameters:
         - name: limit
           in: query
           description: Maximum number of products to return
@@ -56,6 +57,10 @@ paths:
             application/json:
               schema:
                 type: object
+                required:
+                  - products
+                  - total
+                  - limit
                 properties:
                   products:
                     type: array
@@ -139,7 +144,7 @@ paths:
 
         **Middlewares applied:**
         - Authentication required
-      operationID: listOrders
+      operationId: listOrders
       tags:
         - Orders
       security:
@@ -151,6 +156,9 @@ paths:
             application/json:
               schema:
                 type: object
+                required:
+                  - orders
+                  - total
                 properties:
                   orders:
                     type: array
@@ -178,7 +186,7 @@ paths:
 
         **Middlewares applied:**
         - Authentication required
-      operationID: createOrder
+      operationId: createOrder
       tags:
         - Orders
       security:
@@ -440,11 +448,19 @@ paths:
 
         **Middlewares applied:**
         - Authentication required
-      operationID: getUserWithOrders
+      operationId: getUserWithOrders
       tags:
         - Users
       security:
         - bearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          description: Unique identifier of the user
+          required: true
+          schema:
+            type: string
+            format: uuid
       responses:
         '200':
           description: Successfully retrieved user information and orders
@@ -471,7 +487,7 @@ paths:
 
         **Middlewares applied:**
         - Authentication required
-      operationID: deleteUserById
+      operationId: deleteUserById
       tags:
         - Users
       security:
@@ -513,11 +529,19 @@ paths:
 
         **Middlewares applied:**
         - Authentication required
-      operationID: getUserLoyaltyPoints
+      operationId: getUserLoyaltyPoints
       tags:
         - Users
       security:
         - bearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          description: Unique identifier of the user
+          required: true
+          schema:
+            type: string
+            format: uuid
       responses:
         '200':
           description: Successfully retrieved user loyalty points
@@ -525,6 +549,8 @@ paths:
             application/json:
               schema:
                 type: object
+                required:
+                  - loyaltyPoints
                 properties:
                   loyaltyPoints:
                     type: integer
@@ -548,65 +574,75 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-      post:
-        summary: Redeem user loyalty points
-        description: |
-          Redeems loyalty points for the authenticated user
-          **Middlewares applied:**
-          - Authentication required
-        operationID: redeemUserLoyaltyPoints
-        tags:
-          - Users
-        security:
-          - bearerAuth: []
-        requestBody:
-          description: Points to redeem
+    post:
+      summary: Redeem user loyalty points
+      description: |
+        Redeems loyalty points for the authenticated user
+        **Middlewares applied:**
+        - Authentication required
+      operationId: redeemUserLoyaltyPoints
+      tags:
+        - Users
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          description: Unique identifier of the user
           required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        description: Points to redeem
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                points:
+                  type: integer
+                  description: Number of loyalty points to redeem
+                  minimum: 1
+      responses:
+        '200':
+          description: Successfully redeemed loyalty points
           content:
             application/json:
               schema:
                 type: object
+                required:
+                  - remainingPoints
                 properties:
-                  points:
+                  remainingPoints:
                     type: integer
-                    description: Number of loyalty points to redeem
-                    minimum: 1
-        responses:
-          '200':
-            description: Successfully redeemed loyalty points
-            content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    remainingPoints:
-                      type: integer
-                      description: Remaining loyalty points after redemption
-                      minimum: 0
-          '400':
-            description: Invalid points to redeem
-            content:
-              application/json:
-                schema:
-                  $ref: '#/components/schemas/Error'
-          '401':
-            description: Unauthorized - Invalid or missing authentication token
-            content:
-              application/json:
-                schema:
-                  $ref: '#/components/schemas/Error'
-          '404':
-            description: User not found
-            content:
-              application/json:
-                schema:
-                  $ref: '#/components/schemas/Error'
-          '500':
-            description: Internal server error
-            content:
-              application/json:
-                schema:
-                  $ref: '#/components/schemas/Error'
+                    description: Remaining loyalty points after redemption
+                    minimum: 0
+        '400':
+          description: Invalid points to redeem
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized - Invalid or missing authentication token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /user:
     post:
       summary: Create a new user
@@ -615,7 +651,7 @@ paths:
 
         **Middlewares applied:**
         - Authentication required
-      operationID: createUser
+      operationId: createUser
       tags:
         - Users
       requestBody:

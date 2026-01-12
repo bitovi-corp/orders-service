@@ -9,21 +9,21 @@ import (
 // LoggingMiddleware logs all HTTP requests with request/response details
 func LoggingMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		start := time.Now()
+	start := time.Now()
 
-		// Log request
-		log.Printf("[%s] %s %s - Started", r.Method, r.URL.Path, r.RemoteAddr)
+	// Log request
+	log.Printf("[%s] %s %s --- Started", r.Method, r.URL.Path, r.RemoteAddr)
 
-		// Create a response writer wrapper to capture status code
-		wrapped := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
+	// Create a response writer wrapper to capture status code
+	wrapped := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
 
-		// Call the next handler
-		next(wrapped, r)
+	// Call the next handler
+	next(wrapped, r)
 
-		// Log response
-		duration := time.Since(start)
-		log.Printf("[%s] %s %s - Completed in %v with status %d", 
-			r.Method, r.URL.Path, r.RemoteAddr, duration, wrapped.statusCode)
+	// Log response
+	duration := time.Since(start)
+	log.Printf("[%s] %s %s --- Completed in %v with status %d", 
+		r.Method, r.URL.Path, r.RemoteAddr, duration, wrapped.statusCode)
 	}
 }
 

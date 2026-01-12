@@ -2,6 +2,8 @@
 
 A Go HTTP API server demonstrating e-commerce order management functionality. This project follows a contract-first approach with OpenAPI specification and implements user management, product catalog, and order workflow features.
 
+**Constitutional Compliance**: ✅ 100% Compliant (v1.0.1) | [View Constitution](.specify/memory/constitution.md)
+
 ## Table of Contents
 
 - [Architecture](#architecture)
@@ -12,6 +14,7 @@ A Go HTTP API server demonstrating e-commerce order management functionality. Th
 - [Development](#development)
 - [Testing](#testing)
 - [Design Patterns](#design-patterns)
+- [Constitutional Principles](#constitutional-principles)
 
 ## Architecture
 
@@ -280,6 +283,30 @@ PATCH operations on orders use quantity arithmetic:
 - Deleting a user automatically cancels all their PENDING orders
 - Other order statuses remain unchanged
 
+## Constitutional Principles
+
+This project adheres to a formal constitution (v1.0.1) that defines core development principles:
+
+1. **Contract-First Development** - OpenAPI spec is the source of truth
+2. **Standard Go Project Layout** - Clear separation of concerns
+3. **Test Coverage & Isolation** - Comprehensive unit and integration tests
+4. **Middleware Composition** - Consistent auth and logging patterns
+5. **Standard Error Handling** - Uniform error response format
+
+**Compliance Status**: ✅ 100% Compliant  
+**Documentation**: [Constitution](.specify/memory/constitution.md) | [Compliance Report](.specify/memory/constitution-compliance-report.md)
+
+### Validation
+
+Validate constitutional compliance:
+```bash
+# Validate OpenAPI specification
+python3 .specify/scripts/validate-openapi.py
+
+# Run all tests
+go test ./...
+```
+
 ## Dependencies
 
 - **github.com/google/uuid** (v1.6.0) - UUID generation and validation
@@ -287,9 +314,10 @@ PATCH operations on orders use quantity arithmetic:
 ## Contributing
 
 1. Follow the existing code structure and conventions
-2. Update OpenAPI spec before implementing new endpoints
-3. Add tests for new functionality
+2. **Update OpenAPI spec before implementing new endpoints** (Constitutional Principle I)
+3. Add tests for new functionality (Constitutional Principle III)
 4. Ensure all tests pass before submitting changes
+5. Validate OpenAPI spec compliance
 
 ## Contact
 
