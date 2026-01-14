@@ -26,7 +26,7 @@ func main() {
 	http.HandleFunc("/orders", middleware.LoggingMiddleware(authmiddleware.RequireRoles("admin")(handleOrders)))
 
 	// Start server
-	port := ":8080"
+	port := cfg.Port
 	log.Printf("Starting Example Server API v1.0.0 on port %s", port)
 	log.Printf("Endpoints available:")
 	log.Printf("  - GET http://localhost%s/health (no auth)", port)
