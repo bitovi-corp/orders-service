@@ -12,7 +12,42 @@ import (
 	"github.com/Bitovi/example-go-server/internal/services"
 )
 
+// MockProductServiceClient is a test mock for ProductServiceClient
+type MockProductServiceClient struct{}
+
+func (m *MockProductServiceClient) GetProduct(productID string) (*services.ProductResponse, error) {
+	// Return mock data for known product IDs (supports both simple names and UUIDs)
+	mockProducts := map[string]*services.ProductResponse{
+		"product-1":                               {ID: 1, Name: "Product 1", Description: "Test product 1", Price: 10.00, Availability: true},
+		"product-2":                               {ID: 2, Name: "Product 2", Description: "Test product 2", Price: 20.00, Availability: true},
+		"product-3":                               {ID: 3, Name: "Product 3", Description: "Test product 3", Price: 30.00, Availability: true},
+		"550e8400-e29b-41d4-a716-446655440000":   {ID: 100, Name: "UUID Product 1", Description: "Test UUID product 1", Price: 10.00, Availability: true},
+		"550e8400-e29b-41d4-a716-446655440001":   {ID: 101, Name: "UUID Product 2", Description: "Test UUID product 2", Price: 10.00, Availability: true},
+		"550e8400-e29b-41d4-a716-446655440003":   {ID: 103, Name: "UUID Product 3", Description: "Test UUID product 3", Price: 15.00, Availability: true},
+		"999e9999-e99b-99d9-a999-999999999999":   {ID: 999, Name: "Random UUID Product", Description: "Any valid UUID product", Price: 10.00, Availability: true},
+	}
+	if product, ok := mockProducts[productID]; ok {
+		return product, nil
+	}
+	return nil, services.ErrProductNotFound
+}
+
+func (m *MockProductServiceClient) ValidateProduct(productID string) (float64, string, error) {
+	product, err := m.GetProduct(productID)
+	if err != nil {
+		return 0, "", err
+	}
+	if !product.Availability {
+		return 0, "", services.ErrProductNotFound
+	}
+	return product.Price, product.Name, nil
+}
+
 func TestMain(m *testing.M) {
+	// Initialize order service with mock product client
+	mockClient := &MockProductServiceClient{}
+	InitializeOrderService(mockClient)
+
 	// Reset mock data before running tests
 	services.ResetOrderMockData()
 
@@ -24,6 +59,9 @@ func TestMain(m *testing.M) {
 
 // resetMockData should be called at the start of each test that modifies data
 func resetMockData() {
+	// Re-initialize to ensure clean state
+	mockClient := &MockProductServiceClient{}
+	InitializeOrderService(mockClient)
 	services.ResetOrderMockData()
 }
 

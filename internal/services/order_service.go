@@ -2,6 +2,8 @@ package services
 
 import (
 	"errors"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/Bitovi/example-go-server/internal/models"
@@ -11,6 +13,10 @@ import (
 var (
 	// ErrOrderNotFound is returned when an order is not found
 	ErrOrderNotFound = errors.New("order not found")
+	// ErrProductServiceUnavailable is returned when product service is unavailable
+	ErrProductServiceUnavailable = errors.New("product service unavailable")
+	// ErrProductNotFound is returned when a product is not found
+	ErrProductNotFound = errors.New("product not found")
 
 	// orderUserMap tracks which user owns which order
 	orderUserMap = map[string]string{
@@ -33,10 +39,9 @@ var (
 					Quantity:  2,
 				},
 			},
-			TotalPrice:           1359.97,
-			AccruedLoyaltyPoints: 135, // 1359.97 / 10 = 135 points
-			OrderDate:            time.Now().AddDate(0, 0, -5),
-			Status:               models.OrderStatusPending,
+			TotalPrice: 1359.97,
+			OrderDate:  time.Now().AddDate(0, 0, -5),
+			Status:     models.OrderStatusPending,
 		},
 		{
 			ID: "650e8400-e29b-41d4-a716-446655440001",
@@ -46,10 +51,9 @@ var (
 					Quantity:  3,
 				},
 			},
-			TotalPrice:           149.97,
-			AccruedLoyaltyPoints: 14, // 149.97 / 10 = 14 points
-			OrderDate:            time.Now().AddDate(0, 0, -3),
-			Status:               models.OrderStatusShipped,
+			TotalPrice: 149.97,
+			OrderDate:  time.Now().AddDate(0, 0, -3),
+			Status:     models.OrderStatusShipped,
 		},
 		{
 			ID: "650e8400-e29b-41d4-a716-446655440002",
@@ -63,10 +67,9 @@ var (
 					Quantity:  1,
 				},
 			},
-			TotalPrice:           179.94,
-			AccruedLoyaltyPoints: 17, // 179.94 / 10 = 17 points
-			OrderDate:            time.Now().AddDate(0, 0, -1),
-			Status:               models.OrderStatusProcessing,
+			TotalPrice: 179.94,
+			OrderDate:  time.Now().AddDate(0, 0, -1),
+			Status:     models.OrderStatusProcessing,
 		},
 	}
 )
@@ -93,10 +96,9 @@ func ResetOrderMockData() {
 					Quantity:  2,
 				},
 			},
-			TotalPrice:           1359.97,
-			AccruedLoyaltyPoints: 135, // 1359.97 / 10 = 135 points
-			OrderDate:            time.Now().AddDate(0, 0, -5),
-			Status:               models.OrderStatusPending,
+			TotalPrice: 1359.97,
+			OrderDate:  time.Now().AddDate(0, 0, -5),
+			Status:     models.OrderStatusPending,
 		},
 		{
 			ID: "650e8400-e29b-41d4-a716-446655440001",
@@ -106,10 +108,9 @@ func ResetOrderMockData() {
 					Quantity:  3,
 				},
 			},
-			TotalPrice:           149.97,
-			AccruedLoyaltyPoints: 14, // 149.97 / 10 = 14 points
-			OrderDate:            time.Now().AddDate(0, 0, -3),
-			Status:               models.OrderStatusShipped,
+			TotalPrice: 149.97,
+			OrderDate:  time.Now().AddDate(0, 0, -3),
+			Status:     models.OrderStatusShipped,
 		},
 		{
 			ID: "650e8400-e29b-41d4-a716-446655440002",
@@ -123,10 +124,9 @@ func ResetOrderMockData() {
 					Quantity:  1,
 				},
 			},
-			TotalPrice:           179.94,
-			AccruedLoyaltyPoints: 17, // 179.94 / 10 = 17 points
-			OrderDate:            time.Now().AddDate(0, 0, -1),
-			Status:               models.OrderStatusProcessing,
+			TotalPrice: 179.94,
+			OrderDate:  time.Now().AddDate(0, 0, -1),
+			Status:     models.OrderStatusProcessing,
 		},
 	}
 }
@@ -153,11 +153,15 @@ func UpdateMockOrderStatus(index int, status models.OrderStatus) {
 }
 
 // OrderService handles business logic for orders
-type OrderService struct {}
+type OrderService struct {
+	productClient ProductClient
+}
 
-// NewOrderService creates a new order service
-func NewOrderService() *OrderService {
-	return &OrderService{}
+// NewOrderService creates a new OrderService with a product client
+func NewOrderService(productClient ProductClient) *OrderService {
+	return &OrderService{
+		productClient: productClient,
+	}
 }
 
 // ListOrders returns a list of all orders
@@ -184,33 +188,47 @@ func (s *OrderService) GetOrderByID(id string) (*models.Order, error) {
 	return nil, ErrOrderNotFound
 }
 
-// CreateOrder creates a new order
+// CreateOrder creates a new order with product validation from Product Service
 func (s *OrderService) CreateOrder(userID string, products []models.OrderProduct) (*models.Order, error) {
 	if len(products) == 0 {
 		return nil, errors.New("order must contain at least one product")
 	}
 
-	// Calculate total price
-	// In a real implementation, this would look up product prices from the product service
+	// Validate products and calculate total price using Product Service
+	var invalidProducts []string
 	totalPrice := 0.0
-	for _, orderProduct := range products {
-		// For now, use a placeholder price calculation
-		// TODO: Integrate with PRODUCT_SERVICE_URL to fetch actual product prices
-		totalPrice += 10.0 * float64(orderProduct.Quantity) // Placeholder: $10 per item
+
+	for i := range products {
+		price, name, err := s.productClient.ValidateProduct(products[i].ProductID)
+		if err != nil {
+			if strings.Contains(err.Error(), "product not found") {
+				invalidProducts = append(invalidProducts, products[i].ProductID)
+				continue
+			}
+			// Product service unavailable or other error
+			return nil, fmt.Errorf("%w: %v", ErrProductServiceUnavailable, err)
+		}
+
+		// Store product name for reference (optional, not in current model)
+		_ = name
+		
+		// Calculate line total
+		totalPrice += price * float64(products[i].Quantity)
 	}
 
-	// Calculate accrued loyalty points: 1 point per $10 spent (rounded down)
-	accruedPoints := int(totalPrice / 10.0)
+	// If any products were invalid, return error with details
+	if len(invalidProducts) > 0 {
+		return nil, fmt.Errorf("%w: %s", ErrProductNotFound, strings.Join(invalidProducts, ", "))
+	}
 
 	// Generate new order with proper UUID
 	orderID := uuid.New().String()
 	newOrder := models.Order{
-		ID:                   orderID,
-		Products:             products,
-		TotalPrice:           totalPrice,
-		AccruedLoyaltyPoints: accruedPoints,
-		OrderDate:            time.Now(),
-		Status:               models.OrderStatusPending,
+		ID:         orderID,
+		Products:   products,
+		TotalPrice: totalPrice,
+		OrderDate:  time.Now(),
+		Status:     models.OrderStatusPending,
 	}
 
 	// If userId is provided, track the order-user relationship
@@ -255,6 +273,9 @@ func (s *OrderService) UpdateOrderProducts(orderID string, products []models.Ord
 				existingProducts[product.ProductID] = product
 			}
 
+			// Track new products that need validation
+			var newProductIDs []string
+
 			// Process each product in the request
 			for _, product := range products {
 				if product.Quantity == 0 {
@@ -275,10 +296,32 @@ func (s *OrderService) UpdateOrderProducts(orderID string, products []models.Ord
 						existingProducts[product.ProductID] = existing
 					}
 				} else if product.Quantity > 0 {
-					// New product with positive quantity - add it
+					// New product with positive quantity - validate it first
+					newProductIDs = append(newProductIDs, product.ProductID)
 					existingProducts[product.ProductID] = product
 				}
 				// If product doesn't exist and quantity is negative, ignore it
+			}
+
+			// Validate new products with Product Service
+			var invalidProducts []string
+			for _, productID := range newProductIDs {
+				_, _, err := s.productClient.ValidateProduct(productID)
+				if err != nil {
+					if strings.Contains(err.Error(), "product not found") {
+						invalidProducts = append(invalidProducts, productID)
+						// Remove the invalid product from existingProducts
+						delete(existingProducts, productID)
+						continue
+					}
+					// Product service unavailable or other error
+					return nil, fmt.Errorf("%w: %v", ErrProductServiceUnavailable, err)
+				}
+			}
+
+			// If any products were invalid, return error with details
+			if len(invalidProducts) > 0 {
+				return nil, fmt.Errorf("%w: %s", ErrProductNotFound, strings.Join(invalidProducts, ", "))
 			}
 
 			// Convert map back to slice
@@ -287,22 +330,19 @@ func (s *OrderService) UpdateOrderProducts(orderID string, products []models.Ord
 				updatedProducts = append(updatedProducts, product)
 			}
 
-			// Recalculate total price
-			// In a real implementation, this would look up product prices from the product service
+			// Recalculate total price using Product Service
 			totalPrice := 0.0
 			for _, orderProduct := range updatedProducts {
-				// For now, use a placeholder price calculation
-				// TODO: Integrate with PRODUCT_SERVICE_URL to fetch actual product prices
-				totalPrice += 10.0 * float64(orderProduct.Quantity) // Placeholder: $10 per item
+				price, _, err := s.productClient.ValidateProduct(orderProduct.ProductID)
+				if err != nil {
+					return nil, fmt.Errorf("%w: %v", ErrProductServiceUnavailable, err)
+				}
+				totalPrice += price * float64(orderProduct.Quantity)
 			}
-
-			// Recalculate accrued loyalty points: 1 point per $10 spent (rounded down)
-			accruedPoints := int(totalPrice / 10.0)
 
 			// Update the order
 			mockOrders[i].Products = updatedProducts
 			mockOrders[i].TotalPrice = totalPrice
-			mockOrders[i].AccruedLoyaltyPoints = accruedPoints
 
 			return &mockOrders[i], nil
 		}
@@ -324,13 +364,6 @@ func (s *OrderService) SubmitOrder(orderID string) (*models.Order, error) {
 				return nil, errors.New("only pending orders can be submitted")
 			}
 			mockOrders[i].Status = models.OrderStatusProcessing
-
-			// Award loyalty points to the user (1 point per $10 spent)
-			// TODO: Integrate with LOYALTY_SERVICE_URL to award loyalty points
-			if userID, ok := orderUserMap[orderID]; ok {
-				_ = userID // Placeholder: would call loyalty service here
-				_ = order.AccruedLoyaltyPoints
-			}
 
 			return &mockOrders[i], nil
 		}

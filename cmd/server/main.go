@@ -7,6 +7,7 @@ import (
 	"github.com/Bitovi/example-go-server/internal/config"
 	"github.com/Bitovi/example-go-server/internal/handlers"
 	"github.com/Bitovi/example-go-server/internal/middleware"
+	"github.com/Bitovi/example-go-server/internal/services"
 	authmiddleware "github.com/bitovi-corp/auth-middleware-go/middleware"
 )
 
@@ -16,6 +17,13 @@ func main() {
 	log.Printf("Configuration loaded:")
 	log.Printf("  - Product Service URL: %s", cfg.ProductServiceURL)
 	log.Printf("  - Loyalty Service URL: %s", cfg.LoyaltyServiceURL)
+
+	// Initialize Product Service client
+	productClient := services.NewProductServiceClient(cfg.ProductServiceURL, "")
+	log.Printf("Product Service client initialized")
+
+	// Initialize order service with product client
+	handlers.InitializeOrderService(productClient)
 
 	// Register routes according to api/openapi.yaml
 	// Health check endpoint - no auth required

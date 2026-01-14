@@ -14,8 +14,13 @@ import (
 )
 
 var (
-	orderService = services.NewOrderService()
+	orderService *services.OrderService
 )
+
+// InitializeOrderService sets up the order service with dependencies
+func InitializeOrderService(productClient services.ProductClient) {
+	orderService = services.NewOrderService(productClient)
+}
 
 // writeErrorResponse writes a standardized error response
 func writeErrorResponse(w http.ResponseWriter, statusCode int, code, message, details string) {
@@ -105,6 +110,15 @@ func CreateOrder(w http.ResponseWriter, r *http.Request) {
 	order, err := orderService.CreateOrder(requestBody.UserID, requestBody.Products)
 	if err != nil {
 		log.Printf("Error creating order: %v", err)
+		// Handle specific errors from Product Service
+		if errors.Is(err, services.ErrProductServiceUnavailable) {
+			writeErrorResponse(w, http.StatusServiceUnavailable, "PRODUCT_SERVICE_UNAVAILABLE", "Product validation service is currently unavailable", err.Error())
+			return
+		}
+		if errors.Is(err, services.ErrProductNotFound) {
+			writeErrorResponse(w, http.StatusBadRequest, "INVALID_PRODUCT", "One or more products are invalid", err.Error())
+			return
+		}
 		writeErrorResponse(w, http.StatusInternalServerError, "ORDER_CREATION_FAILED", "Failed to create order", err.Error())
 		return
 	}
@@ -217,6 +231,15 @@ func UpdateOrder(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if errors.Is(err, services.ErrOrderNotFound) {
 			writeErrorResponse(w, http.StatusNotFound, "ORDER_NOT_FOUND", "The requested order could not be found", "")
+			return
+		}
+		// Handle specific errors from Product Service
+		if errors.Is(err, services.ErrProductServiceUnavailable) {
+			writeErrorResponse(w, http.StatusServiceUnavailable, "PRODUCT_SERVICE_UNAVAILABLE", "Product validation service is currently unavailable", err.Error())
+			return
+		}
+		if errors.Is(err, services.ErrProductNotFound) {
+			writeErrorResponse(w, http.StatusBadRequest, "INVALID_PRODUCT", "One or more products are invalid", err.Error())
 			return
 		}
 		log.Printf("Error updating order: %v", err)

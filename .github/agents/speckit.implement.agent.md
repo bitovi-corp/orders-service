@@ -128,6 +128,7 @@ You **MUST** consider the user input before proceeding (if not empty).
 9. Completion validation:
    - Verify all required tasks are completed
    - Check that implemented features match the original specification
+   - **TESTING PREREQUISITES**: Before running any tests (unit, integration, e2e, or contract tests), ensure Docker Compose services are up and running. If a `docker-compose.yml` file exists in the workspace or a parent directory (e.g., `dev/docker-compose.yml`), verify services are started with `docker-compose ps` or start them with `docker-compose up -d`. Many tests require external services (databases, APIs, etc.) to be available.
    - Validate that tests pass and coverage meets requirements
    - Confirm the implementation follows the technical plan
    - Report final status with summary of completed work

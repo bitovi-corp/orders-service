@@ -23,12 +23,11 @@ const (
 
 // Order represents an order as defined in api/openapi.yaml
 type Order struct {
-	ID                   string         `json:"id"`
-	Products             []OrderProduct `json:"products"`
-	TotalPrice           float64        `json:"totalPrice"`
-	AccruedLoyaltyPoints int            `json:"accruedLoyaltyPoints"`
-	OrderDate            time.Time      `json:"orderDate"`
-	Status               OrderStatus    `json:"status"`
+	ID         string         `json:"id"`
+	Products   []OrderProduct `json:"products"`
+	TotalPrice float64        `json:"totalPrice"`
+	OrderDate  time.Time      `json:"orderDate"`
+	Status     OrderStatus    `json:"status"`
 }
 
 // OrderListResponse represents the response for GET /orders
