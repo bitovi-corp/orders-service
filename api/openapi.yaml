@@ -1,12 +1,16 @@
 openapi: 3.1.0
 info:
-  title: Example Server API
+  title: Order Service API
   version: 1.0.0
   description: |
-    This API allows you to interact with the Example Server.
+    This API provides order management functionality.
 
     **Global Middlewares:**
     - Logging: All requests are logged with request/response details.
+    
+    **External Service Dependencies:**
+    - Product Service: Used for product information and pricing (via PRODUCT_SERVICE_URL)
+    - Loyalty Service: Used for managing customer loyalty points (via LOYALTY_SERVICE_URL)
 contact:
   name: Bitovi Support
   email: support@bitovi.com
@@ -27,115 +31,6 @@ paths:
         '200':
           description: Server is healthy
   
-  /products:
-    get:
-      summary: Retrieve a list of products
-      description: |
-        Retrieves a list of all products in the system
-
-        **Middlewares applied:**
-        - Authentication required
-      operationId: listProducts
-      tags:
-        - Products
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: limit
-          in: query
-          description: Maximum number of products to return
-          required: false
-          schema:
-            type: integer
-            minimum: 1
-            maximum: 100
-            default: 20
-      responses:
-        '200':
-          description: Successfully retrieved list of products
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - products
-                  - total
-                  - limit
-                properties:
-                  products:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Product'
-                  total:
-                    type: integer
-                    description: Total number of products available
-                  limit:
-                    type: integer
-          '401':
-            description: Unauthorized - Invalid or missing authentication token
-            content:
-              application/json:
-                schema:
-                  $ref: '#/components/schemas/Error'
-          '500':
-            description: Internal server error
-            content:
-              application/json:
-                schema:
-                  $ref: '#/components/schemas/Error'
-  /products/{productId}:
-    get:
-      summary: Get product by ID
-      description: |
-        Retrieves a single product by its unique identifier
-
-        **Middlewares applied:**
-        - Authentication required
-      operationId: getProductById
-      tags:
-        - Products
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: productId
-          in: path
-          description: Unique identifier of the product
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '200':
-          description: Successfully retrieved product
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Product'
-        '401':
-          description: Unauthorized - Invalid or missing authentication token
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '404':
-          description: Product not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '400':
-          description: Invalid product ID format
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
   /orders:
     get:
       summary: Retrieve a list of orders
@@ -143,7 +38,7 @@ paths:
         Retrieves a list of all orders in the system
 
         **Middlewares applied:**
-        - Authentication required
+        - Authentication required (admin role)
       operationId: listOrders
       tags:
         - Orders
@@ -163,7 +58,7 @@ paths:
                   orders:
                     type: array
                     items:
-                      type: object
+                      $ref: '#/components/schemas/Order'
                   total:
                     type: integer
                     description: Total number of orders available
@@ -185,7 +80,7 @@ paths:
         Creates a new order in the system
 
         **Middlewares applied:**
-        - Authentication required
+        - Authentication required (admin role)
       operationId: createOrder
       tags:
         - Orders
@@ -198,15 +93,18 @@ paths:
           application/json:
             schema:
               type: object
+              required:
+                - userId
+                - products
               properties:
                 userId:
                   type: string
                   format: uuid
                   description: Unique identifier for the user placing the order
-                  required: true
                 products:
                   type: array
                   description: List of products in the order with their quantities
+                  minItems: 1
                   items:
                     type: object
                     required:
@@ -246,6 +144,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+  
   /orders/{orderId}:
     get:
       summary: Get order by ID
@@ -253,7 +152,7 @@ paths:
         Retrieves a single order by its unique identifier
 
         **Middlewares applied:**
-        - Authentication required
+        - Authentication required (admin role)
       operationId: getOrderById
       tags:
         - Orders
@@ -301,10 +200,10 @@ paths:
     patch:
       summary: Update an existing order
       description: |
-        Updates details of an existing order.
+        Updates products in an existing PENDING order. Only pending orders can be updated.
 
         **Middlewares applied:**
-        - Authentication required
+        - Authentication required (admin role)
       operationId: updateOrder
       tags:
         - Orders
@@ -324,12 +223,14 @@ paths:
         content:
           application/json:
             schema:
-              # Should be an array of objects with productId and quantity
               type: object
+              required:
+                - products
               properties:
                 products:
                   type: array
-                  description: List of products in the order with their quantities
+                  description: List of products to add/update/remove in the order
+                  minItems: 1
                   items:
                     type: object
                     required:
@@ -342,7 +243,11 @@ paths:
                         description: Unique identifier for the product
                       quantity:
                         type: integer
-                        description: Quantity of the product ordered
+                        description: |
+                          Quantity change for the product:
+                          - Positive: Add quantity to existing or create new product line
+                          - Negative: Subtract quantity from existing (removes if result <= 0)
+                          - Zero: No change
       responses:
         '200':
           description: Successfully updated order
@@ -351,7 +256,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Order'
         '400':
-          description: Invalid order data
+          description: Invalid order data or order cannot be updated (not pending)
           content:
             application/json:
               schema:
@@ -374,13 +279,15 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+  
   /orders/{orderId}/submit:
     post:
-      summary: Cancel or Submit an order
+      summary: Cancel or submit an order
       description: |
-        Cancels or Submits an existing order
+        Cancels or submits an existing order. Submitting changes status to PROCESSING and awards loyalty points.
+
         **Middlewares applied:**
-        - Authentication required
+        - Authentication required (admin role)
       operationId: cancelOrSubmitOrder
       tags:
         - Orders
@@ -401,6 +308,8 @@ paths:
           application/json:
             schema:
               type: object
+              required:
+                - action
               properties:
                 action:
                   type: string
@@ -439,268 +348,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-  
-  /user/{userId}:
-    get:
-      summary: Retrieve user information and associated orders
-      description: |
-        Retrieves user details along with their associated orders
 
-        **Middlewares applied:**
-        - Authentication required
-      operationId: getUserWithOrders
-      tags:
-        - Users
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: userId
-          in: path
-          description: Unique identifier of the user
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '200':
-          description: Successfully retrieved user information and orders
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/UserOrders'
-        '401':
-          description: Unauthorized - Invalid or missing authentication token
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-    delete:
-      summary: Delete a user by ID
-      description: |
-        Deletes a user from the system by their unique identifier
-
-        **Middlewares applied:**
-        - Authentication required
-      operationId: deleteUserById
-      tags:
-        - Users
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: userId
-          in: path
-          description: Unique identifier of the user to delete
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '204':
-          description: Successfully deleted user
-        '401':
-          description: Unauthorized - Invalid or missing authentication token
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '404':
-          description: User not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-  /user/{userId}/points:
-    get:
-      summary: Retrieve user loyalty points
-      description: |
-        Retrieves the loyalty points of the authenticated user
-
-        **Middlewares applied:**
-        - Authentication required
-      operationId: getUserLoyaltyPoints
-      tags:
-        - Users
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: userId
-          in: path
-          description: Unique identifier of the user
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '200':
-          description: Successfully retrieved user loyalty points
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - loyaltyPoints
-                properties:
-                  loyaltyPoints:
-                    type: integer
-                    description: Loyalty points accumulated by the user
-                    minimum: 0
-        '401':
-          description: Unauthorized - Invalid or missing authentication token
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '404':
-          description: User not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-    post:
-      summary: Redeem user loyalty points
-      description: |
-        Redeems loyalty points for the authenticated user
-        **Middlewares applied:**
-        - Authentication required
-      operationId: redeemUserLoyaltyPoints
-      tags:
-        - Users
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: userId
-          in: path
-          description: Unique identifier of the user
-          required: true
-          schema:
-            type: string
-            format: uuid
-      requestBody:
-        description: Points to redeem
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                points:
-                  type: integer
-                  description: Number of loyalty points to redeem
-                  minimum: 1
-      responses:
-        '200':
-          description: Successfully redeemed loyalty points
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - remainingPoints
-                properties:
-                  remainingPoints:
-                    type: integer
-                    description: Remaining loyalty points after redemption
-                    minimum: 0
-        '400':
-          description: Invalid points to redeem
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          description: Unauthorized - Invalid or missing authentication token
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '404':
-          description: User not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-  /user:
-    post:
-      summary: Create a new user
-      description: |
-        Creates a new user in the system
-
-        **Middlewares applied:**
-        - Authentication required
-      operationId: createUser
-      tags:
-        - Users
-      requestBody:
-        description: User details
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - username
-                - email
-                - firstname
-                - lastname
-              properties:
-                username:
-                  type: string
-                  description: Username of the user
-                  minLength: 3
-                  maxLength: 30
-                email:
-                  type: string
-                  format: email
-                  description: Email address of the user
-                firstname:
-                  type: string
-                  description: First name of the user
-                lastname:
-                  type: string
-                  description: Last name of the user
-      responses:
-        '201':
-          description: Successfully created user
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/User'
-        '400':
-          description: Invalid user data
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
 components:
   securitySchemes:
     bearerAuth:
@@ -708,77 +356,20 @@ components:
       scheme: bearer
       bearerFormat: JWT
       description: JWT token authentication. Include the token in the Authorization header as "Bearer {token}"
-  schemas:
-    Product:
-      type: object
-      required:
-        - id
-        - name
-        - price
-      properties:
-        id:
-          type: string
-          format: uuid
-          description: Unique identifier for the product
-        name:
-          type: string
-          description: Name of the product
-          minLength: 1
-          maxLength: 100
-        description:
-          type: string
-          description: Detailed description of the product
-        price:
-          type: number
-          format: float
-          description: Price of the product
-          minimum: 0
-        category:
-          type: string
-          description: Category of the product
-        inStock:
-          type: boolean
-          description: Availability of the product
-        createdAt:
-          type: string
-          format: date-time
-          description: Timestamp when the product was created
-        updatedAt:
-          type: string
-          format: date-time
-          description: Timestamp when the product was last updated
   
-    Error:
-      type: object
-      required:
-        - code
-        - message
-      properties:
-        code:
-          type: string
-          description: Error code
-          example: "PRODUCT_NOT_FOUND"
-        message:
-          type: string
-          description: Human-readable error message
-          example: "The requested product could not be found"
-        details:
-          type: string
-          description: Additional error details
-
+  schemas:
     Order:
       type: object
       required:
         - id
-        - productId
-        - quantity
+        - products
         - totalPrice
+        - status
       properties:
         id:
           type: string
           format: uuid
           description: Unique identifier for the order
-        # The products schema should contain an array of objects, the object should be the product ID and the quantity ordered
         products:
           type: array
           description: List of products in the order with their quantities
@@ -818,59 +409,21 @@ components:
             - SHIPPED
             - DELIVERED
             - CANCELED
-
-    User:
+  
+    Error:
       type: object
       required:
-        - id
-        - username
-        - email
-        - firstname
-        - lastname
+        - code
+        - message
       properties:
-        id:
+        code:
           type: string
-          format: uuid
-          description: Unique identifier for the user
-        username:
+          description: Error code
+          example: "ORDER_NOT_FOUND"
+        message:
           type: string
-          description: Username of the user
-          minLength: 3
-          maxLength: 30
-        email:
+          description: Human-readable error message
+          example: "The requested order could not be found"
+        details:
           type: string
-          format: email
-          description: Email address of the user
-        firstname:
-          type: string
-          description: First name of the user
-        lastname:
-          type: string
-          description: Last name of the user
-        createdAt:
-          type: string
-          format: date-time
-          description: Timestamp when the user was created
-        updatedAt:
-          type: string
-          format: date-time
-          description: Timestamp when the user was last updated
-        loyaltyPoints:
-          type: integer
-          description: Loyalty points accumulated by the user
-          minimum: 0
-    
-    UserOrders:
-      type: object
-      required:
-        - user
-        - orders
-      properties:
-        user:
-          $ref: '#/components/schemas/User'
-        orders:
-          type: array
-          description: List of orders associated with the user
-          items:
-            $ref: '#/components/schemas/Order'
-
+          description: Additional error details

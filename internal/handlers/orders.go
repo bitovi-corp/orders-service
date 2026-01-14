@@ -14,9 +14,30 @@ import (
 )
 
 var (
-	userService  = services.NewUserService()
-	orderService = services.NewOrderService(userService)
+	orderService = services.NewOrderService()
 )
+
+// writeErrorResponse writes a standardized error response
+func writeErrorResponse(w http.ResponseWriter, statusCode int, code, message, details string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
+
+	errorResp := models.ErrorResponse{
+		Code:    code,
+		Message: message,
+		Details: details,
+	}
+
+	if err := json.NewEncoder(w).Encode(errorResp); err != nil {
+		log.Printf("Error encoding error response: %v", err)
+	}
+}
+
+// isValidUUID performs UUID format validation using google/uuid
+func isValidUUID(uuidStr string) bool {
+	_, err := uuid.Parse(uuidStr)
+	return err == nil
+}
 
 // ListOrders implements GET /orders endpoint as defined in api/openapi.yaml
 func ListOrders(w http.ResponseWriter, r *http.Request) {

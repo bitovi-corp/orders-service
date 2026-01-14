@@ -11,14 +11,14 @@ import (
 var (
 	// ErrOrderNotFound is returned when an order is not found
 	ErrOrderNotFound = errors.New("order not found")
-	
+
 	// orderUserMap tracks which user owns which order
 	orderUserMap = map[string]string{
 		"650e8400-e29b-41d4-a716-446655440000": "750e8400-e29b-41d4-a716-446655440000", // johndoe
 		"650e8400-e29b-41d4-a716-446655440001": "750e8400-e29b-41d4-a716-446655440000", // johndoe
 		"650e8400-e29b-41d4-a716-446655440002": "750e8400-e29b-41d4-a716-446655440001", // janedoe
 	}
-	
+
 	// Mock order data
 	mockOrders = []models.Order{
 		{
@@ -79,7 +79,7 @@ func ResetOrderMockData() {
 		"650e8400-e29b-41d4-a716-446655440001": "750e8400-e29b-41d4-a716-446655440000", // johndoe
 		"650e8400-e29b-41d4-a716-446655440002": "750e8400-e29b-41d4-a716-446655440001", // janedoe
 	}
-	
+
 	mockOrders = []models.Order{
 		{
 			ID: "650e8400-e29b-41d4-a716-446655440000",
@@ -153,25 +153,21 @@ func UpdateMockOrderStatus(index int, status models.OrderStatus) {
 }
 
 // OrderService handles business logic for orders
-type OrderService struct{
-	userService *UserService
-}
+type OrderService struct {}
 
 // NewOrderService creates a new order service
-func NewOrderService(userService *UserService) *OrderService {
-	return &OrderService{
-		userService: userService,
-	}
+func NewOrderService() *OrderService {
+	return &OrderService{}
 }
 
 // ListOrders returns a list of all orders
 func (s *OrderService) ListOrders() ([]models.Order, int) {
 	total := len(mockOrders)
-	
+
 	// Return a copy to prevent modification
 	orders := make([]models.Order, len(mockOrders))
 	copy(orders, mockOrders)
-	
+
 	return orders, total
 }
 
@@ -184,7 +180,7 @@ func (s *OrderService) GetOrderByID(id string) (*models.Order, error) {
 			return &o, nil
 		}
 	}
-	
+
 	return nil, ErrOrderNotFound
 }
 
@@ -193,26 +189,19 @@ func (s *OrderService) CreateOrder(userID string, products []models.OrderProduct
 	if len(products) == 0 {
 		return nil, errors.New("order must contain at least one product")
 	}
-	
-	// Create product service to look up actual prices
-	productService := NewProductService()
-	
-	// Calculate total price using actual product prices
+
+	// Calculate total price
+	// In a real implementation, this would look up product prices from the product service
 	totalPrice := 0.0
 	for _, orderProduct := range products {
-		// Look up the product to get its price
-		product, err := productService.GetProductByID(orderProduct.ProductID)
-		if err != nil {
-			return nil, errors.New("invalid product ID: " + orderProduct.ProductID)
-		}
-		
-		// Calculate price for this product line item
-		totalPrice += product.Price * float64(orderProduct.Quantity)
+		// For now, use a placeholder price calculation
+		// TODO: Integrate with PRODUCT_SERVICE_URL to fetch actual product prices
+		totalPrice += 10.0 * float64(orderProduct.Quantity) // Placeholder: $10 per item
 	}
-	
+
 	// Calculate accrued loyalty points: 1 point per $10 spent (rounded down)
 	accruedPoints := int(totalPrice / 10.0)
-	
+
 	// Generate new order with proper UUID
 	orderID := uuid.New().String()
 	newOrder := models.Order{
@@ -223,17 +212,15 @@ func (s *OrderService) CreateOrder(userID string, products []models.OrderProduct
 		OrderDate:            time.Now(),
 		Status:               models.OrderStatusPending,
 	}
-	
+
 	// If userId is provided, track the order-user relationship
 	if userID != "" {
 		orderUserMap[orderID] = userID
-		// Also add this order to the user's order list in user_service
-		AddOrderToUser(userID, orderID)
 	}
-	
+
 	// Add to mock orders
 	mockOrders = append(mockOrders, newOrder)
-	
+
 	return &newOrder, nil
 }
 
@@ -245,7 +232,7 @@ func (s *OrderService) UpdateOrderStatus(orderID string, status models.OrderStat
 			return &mockOrders[i], nil
 		}
 	}
-	
+
 	return nil, ErrOrderNotFound
 }
 
@@ -261,20 +248,20 @@ func (s *OrderService) UpdateOrderProducts(orderID string, products []models.Ord
 			if order.Status != models.OrderStatusPending {
 				return nil, errors.New("can only update products for pending orders")
 			}
-			
+
 			// Create a map of existing products for quick lookup
 			existingProducts := make(map[string]models.OrderProduct)
 			for _, product := range order.Products {
 				existingProducts[product.ProductID] = product
 			}
-			
+
 			// Process each product in the request
 			for _, product := range products {
 				if product.Quantity == 0 {
 					// Do nothing
 					continue
 				}
-				
+
 				existing, exists := existingProducts[product.ProductID]
 				if exists {
 					// Product already exists - add or subtract quantity
@@ -293,41 +280,34 @@ func (s *OrderService) UpdateOrderProducts(orderID string, products []models.Ord
 				}
 				// If product doesn't exist and quantity is negative, ignore it
 			}
-			
+
 			// Convert map back to slice
 			updatedProducts := make([]models.OrderProduct, 0, len(existingProducts))
 			for _, product := range existingProducts {
 				updatedProducts = append(updatedProducts, product)
 			}
-			
-			// Create product service to look up actual prices
-			productService := NewProductService()
-			
-			// Recalculate total price using actual product prices
+
+			// Recalculate total price
+			// In a real implementation, this would look up product prices from the product service
 			totalPrice := 0.0
 			for _, orderProduct := range updatedProducts {
-				// Look up the product to get its price
-				product, err := productService.GetProductByID(orderProduct.ProductID)
-				if err != nil {
-					return nil, errors.New("invalid product ID: " + orderProduct.ProductID)
-				}
-				
-				// Calculate price for this product line item
-				totalPrice += product.Price * float64(orderProduct.Quantity)
+				// For now, use a placeholder price calculation
+				// TODO: Integrate with PRODUCT_SERVICE_URL to fetch actual product prices
+				totalPrice += 10.0 * float64(orderProduct.Quantity) // Placeholder: $10 per item
 			}
-			
+
 			// Recalculate accrued loyalty points: 1 point per $10 spent (rounded down)
 			accruedPoints := int(totalPrice / 10.0)
-			
+
 			// Update the order
 			mockOrders[i].Products = updatedProducts
 			mockOrders[i].TotalPrice = totalPrice
 			mockOrders[i].AccruedLoyaltyPoints = accruedPoints
-			
+
 			return &mockOrders[i], nil
 		}
 	}
-	
+
 	return nil, ErrOrderNotFound
 }
 
@@ -344,19 +324,17 @@ func (s *OrderService) SubmitOrder(orderID string) (*models.Order, error) {
 				return nil, errors.New("only pending orders can be submitted")
 			}
 			mockOrders[i].Status = models.OrderStatusProcessing
-			
+
 			// Award loyalty points to the user (1 point per $10 spent)
-			if userID, ok := orderUserMap[orderID]; ok && s.userService != nil {
-				if err := s.userService.AwardLoyaltyPoints(userID, order.AccruedLoyaltyPoints); err != nil {
-					// Log the error but don't fail the order submission
-					// In production, this should be handled more robustly (e.g., retry queue)
-					errors.New("failed to award loyalty points: " + err.Error())
-				}
+			// TODO: Integrate with LOYALTY_SERVICE_URL to award loyalty points
+			if userID, ok := orderUserMap[orderID]; ok {
+				_ = userID // Placeholder: would call loyalty service here
+				_ = order.AccruedLoyaltyPoints
 			}
-			
+
 			return &mockOrders[i], nil
 		}
 	}
-	
+
 	return nil, ErrOrderNotFound
 }
