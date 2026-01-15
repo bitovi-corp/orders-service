@@ -10,8 +10,8 @@ import (
 
 // ProductClient is an interface for interacting with the Product Service
 type ProductClient interface {
-	GetProduct(productID string) (*ProductResponse, error)
-	ValidateProduct(productID string) (float64, string, error)
+	GetProduct(productID string, authToken string) (*ProductResponse, error)
+	ValidateProduct(productID string, authToken string) (float64, string, error)
 }
 
 // ProductServiceClient handles communication with the Product Service
@@ -48,7 +48,7 @@ func NewProductServiceClient(baseURL, authToken string) *ProductServiceClient {
 }
 
 // GetProduct fetches a product by ID from the Product Service
-func (c *ProductServiceClient) GetProduct(productID string) (*ProductResponse, error) {
+func (c *ProductServiceClient) GetProduct(productID string, authToken string) (*ProductResponse, error) {
 	if c.baseURL == "" {
 		return nil, fmt.Errorf("product service URL not configured")
 	}
@@ -60,8 +60,10 @@ func (c *ProductServiceClient) GetProduct(productID string) (*ProductResponse, e
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
-	// Add authentication header if token is provided
-	if c.authToken != "" {
+	// Add authentication header if token is provided (from request or client)
+	if authToken != "" {
+		req.Header.Set("Authorization", authToken)
+	} else if c.authToken != "" {
 		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.authToken))
 	}
 
@@ -102,8 +104,8 @@ func (c *ProductServiceClient) GetProduct(productID string) (*ProductResponse, e
 }
 
 // ValidateProduct checks if a product exists and is available, returns its price and name
-func (c *ProductServiceClient) ValidateProduct(productID string) (float64, string, error) {
-	product, err := c.GetProduct(productID)
+func (c *ProductServiceClient) ValidateProduct(productID string, authToken string) (float64, string, error) {
+	product, err := c.GetProduct(productID, authToken)
 	if err != nil {
 		return 0, "", err
 	}

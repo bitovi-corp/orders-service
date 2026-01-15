@@ -189,7 +189,7 @@ func (s *OrderService) GetOrderByID(id string) (*models.Order, error) {
 }
 
 // CreateOrder creates a new order with product validation from Product Service
-func (s *OrderService) CreateOrder(userID string, products []models.OrderProduct) (*models.Order, error) {
+func (s *OrderService) CreateOrder(userID string, products []models.OrderProduct, authToken string) (*models.Order, error) {
 	if len(products) == 0 {
 		return nil, errors.New("order must contain at least one product")
 	}
@@ -199,7 +199,7 @@ func (s *OrderService) CreateOrder(userID string, products []models.OrderProduct
 	totalPrice := 0.0
 
 	for i := range products {
-		price, name, err := s.productClient.ValidateProduct(products[i].ProductID)
+		price, name, err := s.productClient.ValidateProduct(products[i].ProductID, authToken)
 		if err != nil {
 			if strings.Contains(err.Error(), "product not found") {
 				invalidProducts = append(invalidProducts, products[i].ProductID)
@@ -259,7 +259,7 @@ func (s *OrderService) UpdateOrderStatus(orderID string, status models.OrderStat
 // - If quantity > 0: adds the quantity to existing product (or creates new product)
 // - If quantity < 0: subtracts the quantity from existing product (removes if result <= 0)
 // - If quantity = 0: does nothing
-func (s *OrderService) UpdateOrderProducts(orderID string, products []models.OrderProduct) (*models.Order, error) {
+func (s *OrderService) UpdateOrderProducts(orderID string, products []models.OrderProduct, authToken string) (*models.Order, error) {
 	for i, order := range mockOrders {
 		if order.ID == orderID {
 			// Only allow updating products for pending orders
@@ -306,7 +306,7 @@ func (s *OrderService) UpdateOrderProducts(orderID string, products []models.Ord
 			// Validate new products with Product Service
 			var invalidProducts []string
 			for _, productID := range newProductIDs {
-				_, _, err := s.productClient.ValidateProduct(productID)
+				_, _, err := s.productClient.ValidateProduct(productID, authToken)
 				if err != nil {
 					if strings.Contains(err.Error(), "product not found") {
 						invalidProducts = append(invalidProducts, productID)
@@ -333,7 +333,7 @@ func (s *OrderService) UpdateOrderProducts(orderID string, products []models.Ord
 			// Recalculate total price using Product Service
 			totalPrice := 0.0
 			for _, orderProduct := range updatedProducts {
-				price, _, err := s.productClient.ValidateProduct(orderProduct.ProductID)
+				price, _, err := s.productClient.ValidateProduct(orderProduct.ProductID, authToken)
 				if err != nil {
 					return nil, fmt.Errorf("%w: %v", ErrProductServiceUnavailable, err)
 				}

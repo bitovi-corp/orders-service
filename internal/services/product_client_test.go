@@ -40,7 +40,7 @@ func TestGetProduct_Success(t *testing.T) {
 	client := NewProductServiceClient(server.URL, "test-token")
 
 	// Call GetProduct
-	product, err := client.GetProduct("123")
+	product, err := client.GetProduct("123", "")
 
 	// Verify results
 	if err != nil {
@@ -73,7 +73,7 @@ func TestGetProduct_NotFound(t *testing.T) {
 	client := NewProductServiceClient(server.URL, "test-token")
 
 	// Call GetProduct
-	product, err := client.GetProduct("999")
+	product, err := client.GetProduct("999", "")
 
 	// Verify results
 	if !errors.Is(err, ErrProductNotFound) {
@@ -97,7 +97,7 @@ func TestGetProduct_Unauthorized(t *testing.T) {
 	client := NewProductServiceClient(server.URL, "invalid-token")
 
 	// Call GetProduct
-	product, err := client.GetProduct("123")
+	product, err := client.GetProduct("123", "")
 
 	// Verify results
 	if !errors.Is(err, ErrProductServiceUnavailable) {
@@ -121,7 +121,7 @@ func TestGetProduct_ServerError(t *testing.T) {
 	client := NewProductServiceClient(server.URL, "test-token")
 
 	// Call GetProduct
-	product, err := client.GetProduct("123")
+	product, err := client.GetProduct("123", "")
 
 	// Verify results
 	if !errors.Is(err, ErrProductServiceUnavailable) {
@@ -145,7 +145,7 @@ func TestGetProduct_ServiceUnavailable(t *testing.T) {
 	client := NewProductServiceClient(server.URL, "test-token")
 
 	// Call GetProduct
-	product, err := client.GetProduct("123")
+	product, err := client.GetProduct("123", "")
 
 	// Verify results
 	if !errors.Is(err, ErrProductServiceUnavailable) {
@@ -175,7 +175,7 @@ func TestValidateProduct_Success(t *testing.T) {
 	client := NewProductServiceClient(server.URL, "test-token")
 
 	// Call ValidateProduct
-	price, name, err := client.ValidateProduct("456")
+	price, name, err := client.ValidateProduct("456", "")
 
 	// Verify results
 	if err != nil {
@@ -199,7 +199,7 @@ func TestValidateProduct_NotFound(t *testing.T) {
 	client := NewProductServiceClient(server.URL, "test-token")
 
 	// Call ValidateProduct
-	price, name, err := client.ValidateProduct("999")
+	price, name, err := client.ValidateProduct("999", "")
 
 	// Verify results
 	if !errors.Is(err, ErrProductNotFound) {
@@ -232,7 +232,7 @@ func TestValidateProduct_Unavailable(t *testing.T) {
 	client := NewProductServiceClient(server.URL, "test-token")
 
 	// Call ValidateProduct
-	price, name, err := client.ValidateProduct("789")
+	price, name, err := client.ValidateProduct("789", "")
 
 	// Verify results
 	if err == nil {
@@ -259,7 +259,7 @@ func TestValidateProduct_ServerError(t *testing.T) {
 	client := NewProductServiceClient(server.URL, "test-token")
 
 	// Call ValidateProduct
-	price, name, err := client.ValidateProduct("123")
+	price, name, err := client.ValidateProduct("123", "")
 
 	// Verify results
 	if !errors.Is(err, ErrProductServiceUnavailable) {

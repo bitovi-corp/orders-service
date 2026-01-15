@@ -9,20 +9,20 @@ import (
 
 // MockProductServiceClient is a mock implementation of ProductClient for testing
 type MockProductServiceClient struct {
-	GetProductFunc     func(productID string) (*ProductResponse, error)
-	ValidateProductFunc func(productID string) (float64, string, error)
+	GetProductFunc     func(productID string, authToken string) (*ProductResponse, error)
+	ValidateProductFunc func(productID string, authToken string) (float64, string, error)
 }
 
-func (m *MockProductServiceClient) GetProduct(productID string) (*ProductResponse, error) {
+func (m *MockProductServiceClient) GetProduct(productID string, authToken string) (*ProductResponse, error) {
 	if m.GetProductFunc != nil {
-		return m.GetProductFunc(productID)
+		return m.GetProductFunc(productID, authToken)
 	}
 	return nil, errors.New("GetProduct not mocked")
 }
 
-func (m *MockProductServiceClient) ValidateProduct(productID string) (float64, string, error) {
+func (m *MockProductServiceClient) ValidateProduct(productID string, authToken string) (float64, string, error) {
 	if m.ValidateProductFunc != nil {
-		return m.ValidateProductFunc(productID)
+		return m.ValidateProductFunc(productID, authToken)
 	}
 	return 0, "", errors.New("ValidateProduct not mocked")
 }
@@ -30,7 +30,7 @@ func (m *MockProductServiceClient) ValidateProduct(productID string) (float64, s
 func TestCreateOrder_Success(t *testing.T) {
 	// Create mock product client that returns successful validation
 	mockClient := &MockProductServiceClient{
-		ValidateProductFunc: func(productID string) (float64, string, error) {
+		ValidateProductFunc: func(productID string, authToken string) (float64, string, error) {
 			prices := map[string]float64{
 				"prod-1": 25.00,
 				"prod-2": 50.00,
@@ -53,7 +53,7 @@ func TestCreateOrder_Success(t *testing.T) {
 		{ProductID: "prod-2", Quantity: 1},
 	}
 
-	order, err := service.CreateOrder("user-123", products)
+	order, err := service.CreateOrder("user-123", products, "")
 
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
@@ -89,7 +89,7 @@ func TestCreateOrder_Success(t *testing.T) {
 func TestCreateOrder_ProductNotFound(t *testing.T) {
 	// Create mock product client that returns not found
 	mockClient := &MockProductServiceClient{
-		ValidateProductFunc: func(productID string) (float64, string, error) {
+		ValidateProductFunc: func(productID string, authToken string) (float64, string, error) {
 			if productID == "prod-1" {
 				return 25.00, "Product 1", nil
 			}
@@ -104,7 +104,7 @@ func TestCreateOrder_ProductNotFound(t *testing.T) {
 		{ProductID: "invalid", Quantity: 1},
 	}
 
-	order, err := service.CreateOrder("user-123", products)
+	order, err := service.CreateOrder("user-123", products, "")
 
 	if err == nil {
 		t.Fatal("Expected error for invalid product, got nil")
@@ -120,7 +120,7 @@ func TestCreateOrder_ProductNotFound(t *testing.T) {
 func TestCreateOrder_ProductServiceUnavailable(t *testing.T) {
 	// Create mock product client that returns unavailable
 	mockClient := &MockProductServiceClient{
-		ValidateProductFunc: func(productID string) (float64, string, error) {
+		ValidateProductFunc: func(productID string, authToken string) (float64, string, error) {
 			return 0, "", ErrProductServiceUnavailable
 		},
 	}
@@ -131,7 +131,7 @@ func TestCreateOrder_ProductServiceUnavailable(t *testing.T) {
 		{ProductID: "prod-1", Quantity: 2},
 	}
 
-	order, err := service.CreateOrder("user-123", products)
+	order, err := service.CreateOrder("user-123", products, "")
 
 	if err == nil {
 		t.Fatal("Expected error for unavailable service, got nil")
@@ -147,7 +147,7 @@ func TestCreateOrder_ProductServiceUnavailable(t *testing.T) {
 func TestUpdateOrderProducts_AddNewProduct(t *testing.T) {
 	// Create mock product client
 	mockClient := &MockProductServiceClient{
-		ValidateProductFunc: func(productID string) (float64, string, error) {
+		ValidateProductFunc: func(productID string, authToken string) (float64, string, error) {
 			prices := map[string]float64{
 				"prod-1": 25.00,
 				"prod-2": 50.00,
@@ -171,14 +171,14 @@ func TestUpdateOrderProducts_AddNewProduct(t *testing.T) {
 	initialProducts := []models.OrderProduct{
 		{ProductID: "prod-1", Quantity: 2},
 	}
-	order, _ := service.CreateOrder("user-123", initialProducts)
+	order, _ := service.CreateOrder("user-123", initialProducts, "")
 
 	// Add new product
 	updates := []models.OrderProduct{
 		{ProductID: "prod-3", Quantity: 1},
 	}
 
-	updatedOrder, err := service.UpdateOrderProducts(order.ID, updates)
+	updatedOrder, err := service.UpdateOrderProducts(order.ID, updates, "")
 
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
@@ -204,7 +204,7 @@ func TestUpdateOrderProducts_AddNewProduct(t *testing.T) {
 func TestUpdateOrderProducts_IncreaseQuantity(t *testing.T) {
 	// Create mock product client
 	mockClient := &MockProductServiceClient{
-		ValidateProductFunc: func(productID string) (float64, string, error) {
+		ValidateProductFunc: func(productID string, authToken string) (float64, string, error) {
 			return 25.00, "Product 1", nil
 		},
 	}
@@ -215,14 +215,14 @@ func TestUpdateOrderProducts_IncreaseQuantity(t *testing.T) {
 	initialProducts := []models.OrderProduct{
 		{ProductID: "prod-1", Quantity: 2},
 	}
-	order, _ := service.CreateOrder("user-123", initialProducts)
+	order, _ := service.CreateOrder("user-123", initialProducts, "")
 
 	// Increase quantity (no validation needed for existing products)
 	updates := []models.OrderProduct{
 		{ProductID: "prod-1", Quantity: 3},
 	}
 
-	updatedOrder, err := service.UpdateOrderProducts(order.ID, updates)
+	updatedOrder, err := service.UpdateOrderProducts(order.ID, updates, "")
 
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
@@ -238,7 +238,7 @@ func TestUpdateOrderProducts_IncreaseQuantity(t *testing.T) {
 func TestUpdateOrderProducts_RemoveProduct(t *testing.T) {
 	// Create mock product client
 	mockClient := &MockProductServiceClient{
-		ValidateProductFunc: func(productID string) (float64, string, error) {
+		ValidateProductFunc: func(productID string, authToken string) (float64, string, error) {
 			return 25.00, "Product 1", nil
 		},
 	}
@@ -250,14 +250,14 @@ func TestUpdateOrderProducts_RemoveProduct(t *testing.T) {
 		{ProductID: "prod-1", Quantity: 3},
 		{ProductID: "prod-2", Quantity: 2},
 	}
-	order, _ := service.CreateOrder("user-123", initialProducts)
+	order, _ := service.CreateOrder("user-123", initialProducts, "")
 
 	// Remove all of prod-1
 	updates := []models.OrderProduct{
 		{ProductID: "prod-1", Quantity: -3},
 	}
 
-	updatedOrder, err := service.UpdateOrderProducts(order.ID, updates)
+	updatedOrder, err := service.UpdateOrderProducts(order.ID, updates, "")
 
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
@@ -273,7 +273,7 @@ func TestUpdateOrderProducts_RemoveProduct(t *testing.T) {
 func TestUpdateOrderProducts_InvalidNewProduct(t *testing.T) {
 	// Create mock product client that returns not found for prod-3
 	mockClient := &MockProductServiceClient{
-		ValidateProductFunc: func(productID string) (float64, string, error) {
+		ValidateProductFunc: func(productID string, authToken string) (float64, string, error) {
 			if productID == "prod-1" {
 				return 25.00, "Product 1", nil
 			}
@@ -287,14 +287,14 @@ func TestUpdateOrderProducts_InvalidNewProduct(t *testing.T) {
 	initialProducts := []models.OrderProduct{
 		{ProductID: "prod-1", Quantity: 2},
 	}
-	order, _ := service.CreateOrder("user-123", initialProducts)
+	order, _ := service.CreateOrder("user-123", initialProducts, "")
 
 	// Try to add invalid product
 	updates := []models.OrderProduct{
 		{ProductID: "invalid", Quantity: 1},
 	}
 
-	updatedOrder, err := service.UpdateOrderProducts(order.ID, updates)
+	updatedOrder, err := service.UpdateOrderProducts(order.ID, updates, "")
 
 	if err == nil {
 		t.Fatal("Expected error for invalid product, got nil")
@@ -310,7 +310,7 @@ func TestUpdateOrderProducts_InvalidNewProduct(t *testing.T) {
 func TestSubmitOrder_Success(t *testing.T) {
 	// Create mock product client
 	mockClient := &MockProductServiceClient{
-		ValidateProductFunc: func(productID string) (float64, string, error) {
+		ValidateProductFunc: func(productID string, authToken string) (float64, string, error) {
 			return 25.00, "Product 1", nil
 		},
 	}
@@ -321,7 +321,7 @@ func TestSubmitOrder_Success(t *testing.T) {
 	initialProducts := []models.OrderProduct{
 		{ProductID: "prod-1", Quantity: 2},
 	}
-	order, _ := service.CreateOrder("user-123", initialProducts)
+	order, _ := service.CreateOrder("user-123", initialProducts, "")
 
 	submittedOrder, err := service.SubmitOrder(order.ID)
 
@@ -336,7 +336,7 @@ func TestSubmitOrder_Success(t *testing.T) {
 func TestSubmitOrder_CannotSubmitCancelled(t *testing.T) {
 	// Create mock product client
 	mockClient := &MockProductServiceClient{
-		ValidateProductFunc: func(productID string) (float64, string, error) {
+		ValidateProductFunc: func(productID string, authToken string) (float64, string, error) {
 			return 25.00, "Product 1", nil
 		},
 	}
@@ -347,7 +347,7 @@ func TestSubmitOrder_CannotSubmitCancelled(t *testing.T) {
 	initialProducts := []models.OrderProduct{
 		{ProductID: "prod-1", Quantity: 2},
 	}
-	order, _ := service.CreateOrder("user-123", initialProducts)
+	order, _ := service.CreateOrder("user-123", initialProducts, "")
 	service.CancelOrder(order.ID)
 
 	submittedOrder, err := service.SubmitOrder(order.ID)
@@ -363,7 +363,7 @@ func TestSubmitOrder_CannotSubmitCancelled(t *testing.T) {
 func TestCancelOrder_Success(t *testing.T) {
 	// Create mock product client
 	mockClient := &MockProductServiceClient{
-		ValidateProductFunc: func(productID string) (float64, string, error) {
+		ValidateProductFunc: func(productID string, authToken string) (float64, string, error) {
 			return 25.00, "Product 1", nil
 		},
 	}
@@ -374,7 +374,7 @@ func TestCancelOrder_Success(t *testing.T) {
 	initialProducts := []models.OrderProduct{
 		{ProductID: "prod-1", Quantity: 2},
 	}
-	order, _ := service.CreateOrder("user-123", initialProducts)
+	order, _ := service.CreateOrder("user-123", initialProducts, "")
 
 	cancelledOrder, err := service.CancelOrder(order.ID)
 
@@ -389,7 +389,7 @@ func TestCancelOrder_Success(t *testing.T) {
 func TestGetOrderByID_Success(t *testing.T) {
 	// Create mock product client
 	mockClient := &MockProductServiceClient{
-		ValidateProductFunc: func(productID string) (float64, string, error) {
+		ValidateProductFunc: func(productID string, authToken string) (float64, string, error) {
 			return 25.00, "Product 1", nil
 		},
 	}
@@ -400,7 +400,7 @@ func TestGetOrderByID_Success(t *testing.T) {
 	initialProducts := []models.OrderProduct{
 		{ProductID: "prod-1", Quantity: 2},
 	}
-	order, _ := service.CreateOrder("user-123", initialProducts)
+	order, _ := service.CreateOrder("user-123", initialProducts, "")
 
 	// Get order by ID
 	retrievedOrder, err := service.GetOrderByID(order.ID)

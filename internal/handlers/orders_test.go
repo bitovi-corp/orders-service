@@ -15,7 +15,7 @@ import (
 // MockProductServiceClient is a test mock for ProductServiceClient
 type MockProductServiceClient struct{}
 
-func (m *MockProductServiceClient) GetProduct(productID string) (*services.ProductResponse, error) {
+func (m *MockProductServiceClient) GetProduct(productID string, authToken string) (*services.ProductResponse, error) {
 	// Return mock data for known product IDs (supports both simple names and UUIDs)
 	mockProducts := map[string]*services.ProductResponse{
 		"product-1":                               {ID: 1, Name: "Product 1", Description: "Test product 1", Price: 10.00, Availability: true},
@@ -32,8 +32,8 @@ func (m *MockProductServiceClient) GetProduct(productID string) (*services.Produ
 	return nil, services.ErrProductNotFound
 }
 
-func (m *MockProductServiceClient) ValidateProduct(productID string) (float64, string, error) {
-	product, err := m.GetProduct(productID)
+func (m *MockProductServiceClient) ValidateProduct(productID string, authToken string) (float64, string, error) {
+	product, err := m.GetProduct(productID, authToken)
 	if err != nil {
 		return 0, "", err
 	}

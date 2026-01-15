@@ -106,8 +106,11 @@ func CreateOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Extract auth token from request
+	authToken := r.Header.Get("Authorization")
+
 	// Create order
-	order, err := orderService.CreateOrder(requestBody.UserID, requestBody.Products)
+	order, err := orderService.CreateOrder(requestBody.UserID, requestBody.Products, authToken)
 	if err != nil {
 		log.Printf("Error creating order: %v", err)
 		// Handle specific errors from Product Service
@@ -226,8 +229,11 @@ func UpdateOrder(w http.ResponseWriter, r *http.Request) {
 		// Note: quantity can be positive (add), negative (remove), or 0 (no-op)
 	}
 
+	// Extract auth token from request
+	authToken := r.Header.Get("Authorization")
+
 	// Update order products
-	order, err := orderService.UpdateOrderProducts(orderID, requestBody.Products)
+	order, err := orderService.UpdateOrderProducts(orderID, requestBody.Products, authToken)
 	if err != nil {
 		if errors.Is(err, services.ErrOrderNotFound) {
 			writeErrorResponse(w, http.StatusNotFound, "ORDER_NOT_FOUND", "The requested order could not be found", "")
