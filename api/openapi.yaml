@@ -284,7 +284,7 @@ paths:
     post:
       summary: Cancel or submit an order
       description: |
-        Cancels or submits an existing order. Submitting changes status to PROCESSING and awards loyalty points.
+        Cancels or submits an existing order. Submitting changes status to PROCESSING and triggers loyalty-service accrual.
 
         **Middlewares applied:**
         - Authentication required (admin role)
@@ -362,6 +362,7 @@ components:
       type: object
       required:
         - id
+        - userId
         - products
         - totalPrice
         - status
@@ -370,6 +371,10 @@ components:
           type: string
           format: uuid
           description: Unique identifier for the order
+        userId:
+          type: string
+          format: uuid
+          description: Unique identifier for the user placing the order
         products:
           type: array
           description: List of products in the order with their quantities
@@ -394,7 +399,7 @@ components:
           minimum: 0
         accruedLoyaltyPoints:
           type: integer
-          description: Loyalty points accrued from this order
+          description: Loyalty points accrued from this order (calculated by loyalty-service)
           minimum: 0
         orderDate:
           type: string

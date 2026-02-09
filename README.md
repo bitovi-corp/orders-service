@@ -37,11 +37,7 @@ example-go-server/
 ## Features
 
 ### User Management
-- Create users with profile information
-- Retrieve user details with associated orders
-- Track loyalty points (earned from orders)
-- Redeem loyalty points
-- Delete users (automatically cancels pending orders)
+User management endpoints are now owned by user-service; order-service no longer persists user profiles.
 
 ### Product Catalog
 - Browse available products
@@ -54,7 +50,7 @@ example-go-server/
 - Submit orders to lock for processing
 - Track order status (PENDING → PROCESSING → SHIPPED → DELIVERED)
 - Cancel orders via submit endpoint
-- Automatic loyalty points calculation on order submission (1 point per $10)
+- Loyalty points are calculated and stored by loyalty-service on order submission
 
 ### Authentication & Middleware
 - JWT Bearer token authentication (simplified for demo)
@@ -107,10 +103,7 @@ The complete API specification is defined in `api/openapi.yaml`. Key endpoints:
 - `GET /health` - Server health check (no auth required)
 
 ### Users
-- `POST /user` - Create a new user
-- `GET /user/{userId}` - Get user with their orders
-- `GET /user/{userId}/points` - Get user's loyalty points
-- `DELETE /user/{userId}` - Delete user and cancel pending orders
+- User endpoints have been removed from order-service; use user-service and loyalty-service.
 
 ### Products
 - `GET /products` - List all products
@@ -155,14 +148,12 @@ HTTP middleware components:
 
 ### `/internal/models`
 Data structures representing:
-- Users (with loyalty points)
 - Products (catalog items)
-- Orders (with products, status, loyalty points)
+- Orders (with products, status, accrued loyalty points)
 - Error responses
 
 ### `/internal/services`
 Business logic layer with mock data storage:
-- **UserService**: User CRUD operations, loyalty points management
 - **ProductService**: Product catalog access
 - **OrderService**: Order lifecycle management, price calculation
 
@@ -275,13 +266,11 @@ PATCH operations on orders use quantity arithmetic:
 - `quantity = 0`: No change
 
 ### Loyalty Points
-- Automatically calculated on order submission
-- Formula: `floor(totalPrice / 10.0)`
-- Example: $1,389.95 order = 138 loyalty points
+- Calculated and stored by loyalty-service on order submission
+- Order-service forwards order totals to loyalty-service for accrual
 
 ### Cascade Operations
-- Deleting a user automatically cancels all their PENDING orders
-- Other order statuses remain unchanged
+- User deletion is handled by user-service; order-service no longer exposes user endpoints
 
 ## Constitutional Principles
 

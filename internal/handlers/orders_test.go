@@ -46,7 +46,7 @@ func (m *MockProductServiceClient) ValidateProduct(productID string, authToken s
 func TestMain(m *testing.M) {
 	// Initialize order service with mock product client
 	mockClient := &MockProductServiceClient{}
-	InitializeOrderService(mockClient)
+	InitializeOrderService(mockClient, nil)
 
 	// Reset mock data before running tests
 	services.ResetOrderMockData()
@@ -61,7 +61,7 @@ func TestMain(m *testing.M) {
 func resetMockData() {
 	// Re-initialize to ensure clean state
 	mockClient := &MockProductServiceClient{}
-	InitializeOrderService(mockClient)
+	InitializeOrderService(mockClient, nil)
 	services.ResetOrderMockData()
 }
 

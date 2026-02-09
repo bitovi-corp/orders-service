@@ -3,7 +3,7 @@
 **Feature Branch**: `00-order-service-functionality`  
 **Created**: 2026-01-14  
 **Status**: Documentation  
-**Purpose**: Document existing order service functionality including user management, product catalog, and order workflow
+**Purpose**: Document existing order service functionality including order workflow and external integrations
 
 **Project Context:**
 - Technology: Go 1.25.5
@@ -11,6 +11,7 @@
 - Architecture: Standard Go project layout with HTTP API
 - External Dependencies: 
   - Product Service (via PRODUCT_SERVICE_URL)
+  - Loyalty Service (via LOYALTY_SERVICE_URL)
 
 ## Overview
 
@@ -97,7 +98,7 @@ As a user, I want to submit my order for processing so that it can be fulfilled.
 
 **Acceptance Scenarios**:
 
-1. **Given** a PENDING order, **When** submitting the order via POST /orders/{orderId}/submit, **Then** the system changes status to PROCESSING
+1. **Given** a PENDING order, **When** submitting the order via POST /orders/{orderId}/submit, **Then** the system changes status to PROCESSING and triggers loyalty-service accrual
 2. **Given** a PENDING order, **When** submitting with action=cancel, **Then** the system changes status to CANCELLED
 3. **Given** a non-PENDING order, **When** attempting to submit, **Then** the system returns 400 error with code "ORDER_NOT_PENDING"
 
@@ -144,6 +145,10 @@ As a system, I need to authenticate all API requests to ensure secure access.
 - **FR-010**: System MUST track order status transitions (PENDING → PROCESSING → SHIPPED → DELIVERED, CANCELLED)
 
 #### Product Service Integration
+#### Loyalty Service Integration
+- System MUST call Loyalty Service POST /loyalty/orders on order submission
+- System MUST pass orderId, userId, and totalPrice to loyalty-service
+- System MUST store the returned accruedLoyaltyPoints on the order
 - **FR-011**: System MUST validate all productIds against Product Service during order creation
 - **FR-012**: System MUST call Product Service GET /products/{id} to validate each product exists
 - **FR-013**: System MUST retrieve actual product prices from Product Service for total price calculation
@@ -275,8 +280,10 @@ order-service/
 ```go
 type Order struct {
     ID          string         // UUID format
+    UserID      string
     Products    []OrderProduct
     TotalPrice  float64
+    AccruedLoyaltyPoints int
     OrderDate   time.Time
     Status      OrderStatus    // PENDING, PROCESSING, SHIPPED, DELIVERED, CANCELLED
 }
@@ -674,6 +681,7 @@ Development mode: Any token with 20+ characters is accepted.
 
 - **PORT** - Server port (default: 8100)
 - **PRODUCT_SERVICE_URL** - Product Service base URL (e.g., `http://product-service:8200`)
+- **LOYALTY_SERVICE_URL** - Loyalty Service base URL (e.g., `http://loyalty-service:8300`)
 
 ## Deployment
 

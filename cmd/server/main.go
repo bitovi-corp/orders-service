@@ -22,8 +22,12 @@ func main() {
 	productClient := services.NewProductServiceClient(cfg.ProductServiceURL, "")
 	log.Printf("Product Service client initialized")
 
+	// Initialize Loyalty Service client
+	loyaltyClient := services.NewLoyaltyServiceClient(cfg.LoyaltyServiceURL)
+	log.Printf("Loyalty Service client initialized")
+
 	// Initialize order service with product client
-	handlers.InitializeOrderService(productClient)
+	handlers.InitializeOrderService(productClient, loyaltyClient)
 
 	// Register routes according to api/openapi.yaml
 	// Health check endpoint - no auth required

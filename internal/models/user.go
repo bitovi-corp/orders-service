@@ -11,7 +11,6 @@ type User struct {
 	Email         string    `json:"email"`
 	Firstname     string    `json:"firstname,omitempty"`
 	Lastname      string    `json:"lastname,omitempty"`
-	LoyaltyPoints int       `json:"loyaltyPoints,omitempty"`
 	CreatedAt     time.Time `json:"createdAt,omitempty"`
 	UpdatedAt     time.Time `json:"updatedAt,omitempty"`
 }

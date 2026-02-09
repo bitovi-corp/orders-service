@@ -3,7 +3,7 @@
 ## Test: Complete Order Flow with Loyalty Points
 
 ### Description
-This test validates the complete order creation workflow including user creation, order management, and loyalty points calculation.
+This test validates the complete order creation workflow including order management and loyalty points calculation via loyalty-service.
 
 ### Prerequisites
 - Server running on localhost:8080
@@ -13,16 +13,7 @@ This test validates the complete order creation workflow including user creation
 ### Test Steps
 
 #### 1. Create a new user
-- **Action**: POST /user
-- **Request Body**:
-  ```json
-  {
-    "email": "test@example.com",
-    "username": "Test_User",
-	"firstname": "Jane",
-	"lastname": "Doe"
-  }
-  ```
+- **Action**: Create a user via user-service
 - **Expected Response**: 201 Created
 - **Capture**: `userId` from response
 
@@ -59,14 +50,14 @@ This test validates the complete order creation workflow including user creation
   ```
 - **Expected Response**: 200 OK
 - **Expected**: Order should now contain 3 distinct items
-
 #### 4. Check loyalty points (should be 0 before order submission)
-- **Action**: GET /user/{userId}/points
+- **Action**: GET /loyalty/{userId}/balance
 - **Expected Response**: 200 OK
-- **Expected Body**:
   ```json
   {
-    "loyaltyPoints": 0
+    "balance": 0,
+    "earnedPoints": 0,
+    "redeemedPoints": 0
   }
   ```
 
@@ -96,7 +87,7 @@ This test validates the complete order creation workflow including user creation
 - **Validation**: `status` field must equal "PROCESSING"
 
 #### 7. Check the loyalty points for the order
-- **Action**: GET /user/{userId}/points
+- **Action**: GET /loyalty/{userId}/balance
 - **Expected Response**: 200 OK
 - **Calculation Logic**:
   - Laptop: $1299.99 × 1 = $1299.99
@@ -107,7 +98,9 @@ This test validates the complete order creation workflow including user creation
 - **Expected Body**:
   ```json
   {
-    "loyaltyPoints": 138
+    "balance": 138,
+    "earnedPoints": 138,
+    "redeemedPoints": 0
   }
   ```
 
@@ -131,13 +124,12 @@ This test validates the complete order creation workflow including user creation
   ```
 - **Expected Response**: 201 Created
 - **Capture**: `orderId` from response
-
 ### Cleanup
-- Delete test user: DELETE /user/{userId}
-- Verify the first order that was submitted is still being processed, verify he second order that was submitted is cancelled
+- Verify the first order that was submitted is still being processed
+- Product prices must match the calculation above
 
 ### Notes
 - This test requires authentication token (use test auth middleware)
 - Product prices must match the calculation above
-- Loyalty points calculation: floor(total_amount / 10)
+- Loyalty points calculation: floor(total_amount / 10) (performed in loyalty-service)
 - Test should be idempotent and clean up after itself
