@@ -21,7 +21,7 @@ var (
 	// Mock order data
 	mockOrders = []models.Order{
 		{
-			ID: "650e8400-e29b-41d4-a716-446655440000",
+			ID:     "650e8400-e29b-41d4-a716-446655440000",
 			UserID: "750e8400-e29b-41d4-a716-446655440000",
 			Products: []models.OrderProduct{
 				{
@@ -38,7 +38,7 @@ var (
 			Status:     models.OrderStatusPending,
 		},
 		{
-			ID: "650e8400-e29b-41d4-a716-446655440001",
+			ID:     "650e8400-e29b-41d4-a716-446655440001",
 			UserID: "750e8400-e29b-41d4-a716-446655440000",
 			Products: []models.OrderProduct{
 				{
@@ -51,7 +51,7 @@ var (
 			Status:     models.OrderStatusShipped,
 		},
 		{
-			ID: "650e8400-e29b-41d4-a716-446655440002",
+			ID:     "650e8400-e29b-41d4-a716-446655440002",
 			UserID: "750e8400-e29b-41d4-a716-446655440001",
 			Products: []models.OrderProduct{
 				{
@@ -75,7 +75,7 @@ var (
 func ResetOrderMockData() {
 	mockOrders = []models.Order{
 		{
-			ID: "650e8400-e29b-41d4-a716-446655440000",
+			ID:     "650e8400-e29b-41d4-a716-446655440000",
 			UserID: "750e8400-e29b-41d4-a716-446655440000",
 			Products: []models.OrderProduct{
 				{
@@ -92,7 +92,7 @@ func ResetOrderMockData() {
 			Status:     models.OrderStatusPending,
 		},
 		{
-			ID: "650e8400-e29b-41d4-a716-446655440001",
+			ID:     "650e8400-e29b-41d4-a716-446655440001",
 			UserID: "750e8400-e29b-41d4-a716-446655440000",
 			Products: []models.OrderProduct{
 				{
@@ -105,7 +105,7 @@ func ResetOrderMockData() {
 			Status:     models.OrderStatusShipped,
 		},
 		{
-			ID: "650e8400-e29b-41d4-a716-446655440002",
+			ID:     "650e8400-e29b-41d4-a716-446655440002",
 			UserID: "750e8400-e29b-41d4-a716-446655440001",
 			Products: []models.OrderProduct{
 				{
@@ -129,20 +129,6 @@ func GetMockOrders() []models.Order {
 	orders := make([]models.Order, len(mockOrders))
 	copy(orders, mockOrders)
 	return orders
-}
-
-// GetMockOrdersReference returns a reference to the actual mock orders slice
-// This allows other services to modify orders directly (e.g., cancelling on user deletion)
-func GetMockOrdersReference() []models.Order {
-	return mockOrders
-}
-
-// UpdateMockOrderStatus updates the status of an order at the given index
-// This is used by UserService to cancel pending orders when deleting a user
-func UpdateMockOrderStatus(index int, status models.OrderStatus) {
-	if index >= 0 && index < len(mockOrders) {
-		mockOrders[index].Status = status
-	}
 }
 
 // OrderService handles business logic for orders
@@ -206,7 +192,7 @@ func (s *OrderService) CreateOrder(userID string, products []models.OrderProduct
 
 		// Store product name for reference (optional, not in current model)
 		_ = name
-		
+
 		// Calculate line total
 		totalPrice += price * float64(products[i].Quantity)
 	}
@@ -219,13 +205,13 @@ func (s *OrderService) CreateOrder(userID string, products []models.OrderProduct
 	// Generate new order with proper UUID
 	orderID := uuid.New().String()
 	newOrder := models.Order{
-		ID:         orderID,
-		UserID:     userID,
-		Products:   products,
-		TotalPrice: totalPrice,
+		ID:                   orderID,
+		UserID:               userID,
+		Products:             products,
+		TotalPrice:           totalPrice,
 		AccruedLoyaltyPoints: 0,
-		OrderDate:  time.Now(),
-		Status:     models.OrderStatusPending,
+		OrderDate:            time.Now(),
+		Status:               models.OrderStatusPending,
 	}
 
 	// Add to mock orders
