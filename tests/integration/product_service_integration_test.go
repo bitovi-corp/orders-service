@@ -40,7 +40,7 @@ func TestProductServiceIntegration(t *testing.T) {
 
 	// Initialize Product Service client
 	productClient := services.NewProductServiceClient(productServiceURL, "")
-	handlers.InitializeOrderService(productClient)
+	handlers.InitializeOrderService(productClient, nil)
 	services.ResetOrderMockData()
 
 	t.Run("CreateOrderWithValidProducts", func(t *testing.T) {
@@ -151,7 +151,7 @@ func TestProductServiceIntegration(t *testing.T) {
 	t.Run("ProductServiceUnavailable", func(t *testing.T) {
 		// Initialize with a non-existent Product Service URL
 		badClient := services.NewProductServiceClient("http://localhost:9999", "")
-		handlers.InitializeOrderService(badClient)
+		handlers.InitializeOrderService(badClient, nil)
 
 		orderData := map[string]interface{}{
 			"userId": "550e8400-e29b-41d4-a716-446655440000",
@@ -190,7 +190,7 @@ func TestProductServiceIntegration(t *testing.T) {
 
 		// Restore the good client
 		goodClient := services.NewProductServiceClient(productServiceURL, "")
-		handlers.InitializeOrderService(goodClient)
+		handlers.InitializeOrderService(goodClient, nil)
 	})
 }
 
@@ -215,7 +215,7 @@ func TestCompleteOrderWorkflow(t *testing.T) {
 
 	// Initialize
 	productClient := services.NewProductServiceClient(productServiceURL, "")
-	handlers.InitializeOrderService(productClient)
+	handlers.InitializeOrderService(productClient, nil)
 	services.ResetOrderMockData()
 
 	var orderID string

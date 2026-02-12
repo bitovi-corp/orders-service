@@ -46,7 +46,7 @@ func TestCreateOrder_Success(t *testing.T) {
 		},
 	}
 
-	service := NewOrderService(mockClient)
+	service := NewOrderService(mockClient, nil)
 
 	products := []models.OrderProduct{
 		{ProductID: "prod-1", Quantity: 2},
@@ -97,7 +97,7 @@ func TestCreateOrder_ProductNotFound(t *testing.T) {
 		},
 	}
 
-	service := NewOrderService(mockClient)
+	service := NewOrderService(mockClient, nil)
 
 	products := []models.OrderProduct{
 		{ProductID: "prod-1", Quantity: 2},
@@ -125,7 +125,7 @@ func TestCreateOrder_ProductServiceUnavailable(t *testing.T) {
 		},
 	}
 
-	service := NewOrderService(mockClient)
+	service := NewOrderService(mockClient, nil)
 
 	products := []models.OrderProduct{
 		{ProductID: "prod-1", Quantity: 2},
@@ -165,7 +165,7 @@ func TestUpdateOrderProducts_AddNewProduct(t *testing.T) {
 		},
 	}
 
-	service := NewOrderService(mockClient)
+	service := NewOrderService(mockClient, nil)
 
 	// Create initial order
 	initialProducts := []models.OrderProduct{
@@ -209,7 +209,7 @@ func TestUpdateOrderProducts_IncreaseQuantity(t *testing.T) {
 		},
 	}
 
-	service := NewOrderService(mockClient)
+	service := NewOrderService(mockClient, nil)
 
 	// Create initial order
 	initialProducts := []models.OrderProduct{
@@ -243,7 +243,7 @@ func TestUpdateOrderProducts_RemoveProduct(t *testing.T) {
 		},
 	}
 
-	service := NewOrderService(mockClient)
+	service := NewOrderService(mockClient, nil)
 
 	// Create initial order with 2 products
 	initialProducts := []models.OrderProduct{
@@ -281,7 +281,7 @@ func TestUpdateOrderProducts_InvalidNewProduct(t *testing.T) {
 		},
 	}
 
-	service := NewOrderService(mockClient)
+	service := NewOrderService(mockClient, nil)
 
 	// Create initial order
 	initialProducts := []models.OrderProduct{
@@ -315,7 +315,7 @@ func TestSubmitOrder_Success(t *testing.T) {
 		},
 	}
 
-	service := NewOrderService(mockClient)
+	service := NewOrderService(mockClient, nil)
 
 	// Create and submit order
 	initialProducts := []models.OrderProduct{
@@ -323,7 +323,7 @@ func TestSubmitOrder_Success(t *testing.T) {
 	}
 	order, _ := service.CreateOrder("user-123", initialProducts, "")
 
-	submittedOrder, err := service.SubmitOrder(order.ID)
+	submittedOrder, err := service.SubmitOrder(order.ID, "")
 
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
@@ -341,7 +341,7 @@ func TestSubmitOrder_CannotSubmitCancelled(t *testing.T) {
 		},
 	}
 
-	service := NewOrderService(mockClient)
+	service := NewOrderService(mockClient, nil)
 
 	// Create, cancel, then try to submit order
 	initialProducts := []models.OrderProduct{
@@ -350,7 +350,7 @@ func TestSubmitOrder_CannotSubmitCancelled(t *testing.T) {
 	order, _ := service.CreateOrder("user-123", initialProducts, "")
 	service.CancelOrder(order.ID)
 
-	submittedOrder, err := service.SubmitOrder(order.ID)
+	submittedOrder, err := service.SubmitOrder(order.ID, "")
 
 	if err == nil {
 		t.Fatal("Expected error when submitting cancelled order, got nil")
@@ -368,7 +368,7 @@ func TestCancelOrder_Success(t *testing.T) {
 		},
 	}
 
-	service := NewOrderService(mockClient)
+	service := NewOrderService(mockClient, nil)
 
 	// Create and cancel order
 	initialProducts := []models.OrderProduct{
@@ -394,7 +394,7 @@ func TestGetOrderByID_Success(t *testing.T) {
 		},
 	}
 
-	service := NewOrderService(mockClient)
+	service := NewOrderService(mockClient, nil)
 
 	// Create order
 	initialProducts := []models.OrderProduct{
@@ -415,7 +415,7 @@ func TestGetOrderByID_Success(t *testing.T) {
 
 func TestGetOrderByID_NotFound(t *testing.T) {
 	mockClient := &MockProductServiceClient{}
-	service := NewOrderService(mockClient)
+	service := NewOrderService(mockClient, nil)
 
 	retrievedOrder, err := service.GetOrderByID("non-existent")
 

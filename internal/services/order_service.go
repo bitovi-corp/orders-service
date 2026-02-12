@@ -18,17 +18,11 @@ var (
 	// ErrProductNotFound is returned when a product is not found
 	ErrProductNotFound = errors.New("product not found")
 
-	// orderUserMap tracks which user owns which order
-	orderUserMap = map[string]string{
-		"650e8400-e29b-41d4-a716-446655440000": "750e8400-e29b-41d4-a716-446655440000", // johndoe
-		"650e8400-e29b-41d4-a716-446655440001": "750e8400-e29b-41d4-a716-446655440000", // johndoe
-		"650e8400-e29b-41d4-a716-446655440002": "750e8400-e29b-41d4-a716-446655440001", // janedoe
-	}
-
 	// Mock order data
 	mockOrders = []models.Order{
 		{
-			ID: "650e8400-e29b-41d4-a716-446655440000",
+			ID:     "650e8400-e29b-41d4-a716-446655440000",
+			UserID: "750e8400-e29b-41d4-a716-446655440000",
 			Products: []models.OrderProduct{
 				{
 					ProductID: "550e8400-e29b-41d4-a716-446655440000", // Laptop
@@ -44,7 +38,8 @@ var (
 			Status:     models.OrderStatusPending,
 		},
 		{
-			ID: "650e8400-e29b-41d4-a716-446655440001",
+			ID:     "650e8400-e29b-41d4-a716-446655440001",
+			UserID: "750e8400-e29b-41d4-a716-446655440000",
 			Products: []models.OrderProduct{
 				{
 					ProductID: "550e8400-e29b-41d4-a716-446655440002", // Desk Lamp
@@ -56,7 +51,8 @@ var (
 			Status:     models.OrderStatusShipped,
 		},
 		{
-			ID: "650e8400-e29b-41d4-a716-446655440002",
+			ID:     "650e8400-e29b-41d4-a716-446655440002",
+			UserID: "750e8400-e29b-41d4-a716-446655440001",
 			Products: []models.OrderProduct{
 				{
 					ProductID: "550e8400-e29b-41d4-a716-446655440003", // Notebook
@@ -77,15 +73,10 @@ var (
 // ResetOrderMockData resets the mock order data to its initial state
 // This should be called in test setup to ensure test isolation
 func ResetOrderMockData() {
-	orderUserMap = map[string]string{
-		"650e8400-e29b-41d4-a716-446655440000": "750e8400-e29b-41d4-a716-446655440000", // johndoe
-		"650e8400-e29b-41d4-a716-446655440001": "750e8400-e29b-41d4-a716-446655440000", // johndoe
-		"650e8400-e29b-41d4-a716-446655440002": "750e8400-e29b-41d4-a716-446655440001", // janedoe
-	}
-
 	mockOrders = []models.Order{
 		{
-			ID: "650e8400-e29b-41d4-a716-446655440000",
+			ID:     "650e8400-e29b-41d4-a716-446655440000",
+			UserID: "750e8400-e29b-41d4-a716-446655440000",
 			Products: []models.OrderProduct{
 				{
 					ProductID: "550e8400-e29b-41d4-a716-446655440000", // Laptop
@@ -101,7 +92,8 @@ func ResetOrderMockData() {
 			Status:     models.OrderStatusPending,
 		},
 		{
-			ID: "650e8400-e29b-41d4-a716-446655440001",
+			ID:     "650e8400-e29b-41d4-a716-446655440001",
+			UserID: "750e8400-e29b-41d4-a716-446655440000",
 			Products: []models.OrderProduct{
 				{
 					ProductID: "550e8400-e29b-41d4-a716-446655440002", // Desk Lamp
@@ -113,7 +105,8 @@ func ResetOrderMockData() {
 			Status:     models.OrderStatusShipped,
 		},
 		{
-			ID: "650e8400-e29b-41d4-a716-446655440002",
+			ID:     "650e8400-e29b-41d4-a716-446655440002",
+			UserID: "750e8400-e29b-41d4-a716-446655440001",
 			Products: []models.OrderProduct{
 				{
 					ProductID: "550e8400-e29b-41d4-a716-446655440003", // Notebook
@@ -138,29 +131,17 @@ func GetMockOrders() []models.Order {
 	return orders
 }
 
-// GetMockOrdersReference returns a reference to the actual mock orders slice
-// This allows other services to modify orders directly (e.g., cancelling on user deletion)
-func GetMockOrdersReference() []models.Order {
-	return mockOrders
-}
-
-// UpdateMockOrderStatus updates the status of an order at the given index
-// This is used by UserService to cancel pending orders when deleting a user
-func UpdateMockOrderStatus(index int, status models.OrderStatus) {
-	if index >= 0 && index < len(mockOrders) {
-		mockOrders[index].Status = status
-	}
-}
-
 // OrderService handles business logic for orders
 type OrderService struct {
 	productClient ProductClient
+	loyaltyClient LoyaltyClient
 }
 
 // NewOrderService creates a new OrderService with a product client
-func NewOrderService(productClient ProductClient) *OrderService {
+func NewOrderService(productClient ProductClient, loyaltyClient LoyaltyClient) *OrderService {
 	return &OrderService{
 		productClient: productClient,
+		loyaltyClient: loyaltyClient,
 	}
 }
 
@@ -211,7 +192,7 @@ func (s *OrderService) CreateOrder(userID string, products []models.OrderProduct
 
 		// Store product name for reference (optional, not in current model)
 		_ = name
-		
+
 		// Calculate line total
 		totalPrice += price * float64(products[i].Quantity)
 	}
@@ -224,16 +205,13 @@ func (s *OrderService) CreateOrder(userID string, products []models.OrderProduct
 	// Generate new order with proper UUID
 	orderID := uuid.New().String()
 	newOrder := models.Order{
-		ID:         orderID,
-		Products:   products,
-		TotalPrice: totalPrice,
-		OrderDate:  time.Now(),
-		Status:     models.OrderStatusPending,
-	}
-
-	// If userId is provided, track the order-user relationship
-	if userID != "" {
-		orderUserMap[orderID] = userID
+		ID:                   orderID,
+		UserID:               userID,
+		Products:             products,
+		TotalPrice:           totalPrice,
+		AccruedLoyaltyPoints: 0,
+		OrderDate:            time.Now(),
+		Status:               models.OrderStatusPending,
 	}
 
 	// Add to mock orders
@@ -357,13 +335,21 @@ func (s *OrderService) CancelOrder(orderID string) (*models.Order, error) {
 }
 
 // SubmitOrder submits a pending order for processing
-func (s *OrderService) SubmitOrder(orderID string) (*models.Order, error) {
+func (s *OrderService) SubmitOrder(orderID string, authToken string) (*models.Order, error) {
 	for i, order := range mockOrders {
 		if order.ID == orderID {
 			if order.Status != models.OrderStatusPending {
 				return nil, errors.New("only pending orders can be submitted")
 			}
 			mockOrders[i].Status = models.OrderStatusProcessing
+
+			if s.loyaltyClient != nil {
+				points, err := s.loyaltyClient.AccruePoints(order.ID, order.UserID, order.TotalPrice, authToken)
+				if err != nil {
+					return nil, err
+				}
+				mockOrders[i].AccruedLoyaltyPoints = points
+			}
 
 			return &mockOrders[i], nil
 		}

@@ -54,12 +54,10 @@ func TestOrderWorkflow(t *testing.T) {
 	// Reset mock data at the start of the test
 	services.ResetOrderMockData()
 
-	t.Skip("Integration test skipped - user endpoints have been removed from order-service")
+	t.Skip("Integration test requires loyalty-service and user-service to be running")
 
 	// Create a mock JWT token for testing
 	mockToken := createMockJWT("test-user-123", "test@example.com", []string{"user", "admin"})
-
-	t.Skip("Integration test skipped - user endpoints have been removed from order-service")
 
 	// Helper function to make authenticated requests
 	makeRequest := func(method, path string, body interface{}) *httptest.ResponseRecorder {
@@ -95,28 +93,10 @@ func TestOrderWorkflow(t *testing.T) {
 		return rr
 	}
 
-	// Step 1: Create a new user
-	t.Log("Step 1: Create a new user")
-	createUserBody := map[string]string{
-		"email":     "test@example.com",
-		"username":  "Test_User",
-		"firstname": "Jane",
-		"lastname":  "Doe",
-	}
-	resp := makeRequest("POST", "/user", createUserBody)
-	if resp.Code != http.StatusCreated {
-		t.Fatalf("Step 1 failed: Expected 201, got %d. Body: %s", resp.Code, resp.Body.String())
-	}
-
-	var user map[string]interface{}
-	if err := json.Unmarshal(resp.Body.Bytes(), &user); err != nil {
-		t.Fatalf("Step 1: Failed to parse user response: %v", err)
-	}
-	userID, ok := user["id"].(string)
-	if !ok || userID == "" {
-		t.Fatalf("Step 1: No user ID in response")
-	}
-	t.Logf("Created user with ID: %s", userID)
+	// Step 1: Use a known user from user-service or fixtures
+	t.Log("Step 1: Use a known user ID")
+	userID := "750e8400-e29b-41d4-a716-446655440000"
+	var resp *httptest.ResponseRecorder
 
 	// Step 2: Create a new order for the new user
 	t.Log("Step 2: Create a new order")
@@ -168,7 +148,7 @@ func TestOrderWorkflow(t *testing.T) {
 
 	// Step 4: Check loyalty points (should be 0 before order submission)
 	t.Log("Step 4: Check loyalty points before submission")
-	resp = makeRequest("GET", "/user/"+userID+"/points", nil)
+	resp = makeRequest("GET", "/loyalty/"+userID+"/balance", nil)
 	if resp.Code != http.StatusOK {
 		t.Fatalf("Step 4 failed: Expected 200, got %d. Body: %s", resp.Code, resp.Body.String())
 	}
@@ -177,12 +157,12 @@ func TestOrderWorkflow(t *testing.T) {
 	if err := json.Unmarshal(resp.Body.Bytes(), &pointsResp); err != nil {
 		t.Fatalf("Step 4: Failed to parse points response: %v", err)
 	}
-	loyaltyPoints, ok := pointsResp["loyaltyPoints"].(float64)
+	balance, ok := pointsResp["balance"].(float64)
 	if !ok {
-		t.Fatalf("Step 4: No loyaltyPoints in response")
+		t.Fatalf("Step 4: No balance in response")
 	}
-	if loyaltyPoints != 0 {
-		t.Fatalf("Step 4: Expected 0 loyalty points, got %.0f", loyaltyPoints)
+	if balance != 0 {
+		t.Fatalf("Step 4: Expected 0 loyalty points, got %.0f", balance)
 	}
 	t.Log("Loyalty points correctly at 0 before submission")
 
@@ -227,7 +207,7 @@ func TestOrderWorkflow(t *testing.T) {
 
 	// Step 7: Check the loyalty points after submission
 	t.Log("Step 7: Check loyalty points after submission")
-	resp = makeRequest("GET", "/user/"+userID+"/points", nil)
+	resp = makeRequest("GET", "/loyalty/"+userID+"/balance", nil)
 	if resp.Code != http.StatusOK {
 		t.Fatalf("Step 7 failed: Expected 200, got %d. Body: %s", resp.Code, resp.Body.String())
 	}
@@ -235,18 +215,18 @@ func TestOrderWorkflow(t *testing.T) {
 	if err := json.Unmarshal(resp.Body.Bytes(), &pointsResp); err != nil {
 		t.Fatalf("Step 7: Failed to parse points response: %v", err)
 	}
-	loyaltyPoints, ok = pointsResp["loyaltyPoints"].(float64)
+	balance, ok = pointsResp["balance"].(float64)
 	if !ok {
-		t.Fatalf("Step 7: No loyaltyPoints in response")
+		t.Fatalf("Step 7: No balance in response")
 	}
 
 	// Expected: Laptop ($1299.99) + Notebook ($19.99 × 3 = $59.97) + Mouse ($29.99) = $1389.95
 	// Loyalty points: floor(1389.95 / 10) = 138
 	expectedPoints := 138.0
-	if loyaltyPoints != expectedPoints {
-		t.Fatalf("Step 7: Expected %v loyalty points, got %.0f", expectedPoints, loyaltyPoints)
+	if balance != expectedPoints {
+		t.Fatalf("Step 7: Expected %v loyalty points, got %.0f", expectedPoints, balance)
 	}
-	t.Logf("Loyalty points correctly awarded: %.0f points", loyaltyPoints)
+	t.Logf("Loyalty points correctly awarded: %.0f points", balance)
 
 	// Step 8: Create a second order (PENDING, not submitted)
 	t.Log("Step 8: Create a second order")
@@ -272,14 +252,6 @@ func TestOrderWorkflow(t *testing.T) {
 	}
 	t.Logf("Created second order with ID: %s", order2ID)
 
-	// Cleanup: Delete test user
-	t.Log("Cleanup: Deleting test user")
-	resp = makeRequest("DELETE", "/user/"+userID, nil)
-	if resp.Code != http.StatusNoContent {
-		t.Fatalf("Cleanup failed: Expected 204, got %d. Body: %s", resp.Code, resp.Body.String())
-	}
-	t.Log("User deleted successfully")
-
 	// Verify first order (PROCESSING) is still PROCESSING
 	t.Log("Cleanup verification: Check first order status")
 	resp = makeRequest("GET", "/orders/"+orderID, nil)
@@ -294,21 +266,6 @@ func TestOrderWorkflow(t *testing.T) {
 		t.Fatalf("Cleanup verification: Expected first order to remain PROCESSING, got %s", status)
 	}
 	t.Log("First order (submitted) correctly remains PROCESSING")
-
-	// Verify second order (PENDING) was CANCELED
-	t.Log("Cleanup verification: Check second order status")
-	resp = makeRequest("GET", "/orders/"+order2ID, nil)
-	if resp.Code != http.StatusOK {
-		t.Fatalf("Cleanup verification failed: Expected 200, got %d", resp.Code)
-	}
-	if err := json.Unmarshal(resp.Body.Bytes(), &order2); err != nil {
-		t.Fatalf("Cleanup verification: Failed to parse order2 response: %v", err)
-	}
-	status2, _ := order2["status"].(string)
-	if status2 != "CANCELED" {
-		t.Fatalf("Cleanup verification: Expected second order to be CANCELED, got %s", status2)
-	}
-	t.Log("Second order (pending) correctly CANCELED on user deletion")
 
 	t.Log("✅ Integration test completed successfully!")
 }

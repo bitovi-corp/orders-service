@@ -18,8 +18,8 @@ var (
 )
 
 // InitializeOrderService sets up the order service with dependencies
-func InitializeOrderService(productClient services.ProductClient) {
-	orderService = services.NewOrderService(productClient)
+func InitializeOrderService(productClient services.ProductClient, loyaltyClient services.LoyaltyClient) {
+	orderService = services.NewOrderService(productClient, loyaltyClient)
 }
 
 // writeErrorResponse writes a standardized error response
@@ -303,7 +303,8 @@ func CancelOrSubmitOrder(w http.ResponseWriter, r *http.Request) {
 	case "CANCEL":
 		order, err = orderService.CancelOrder(orderID)
 	case "SUBMIT":
-		order, err = orderService.SubmitOrder(orderID)
+		authToken := r.Header.Get("Authorization")
+		order, err = orderService.SubmitOrder(orderID, authToken)
 	default:
 		writeErrorResponse(w, http.StatusBadRequest, "INVALID_ACTION", "Invalid action. Must be CANCEL or SUBMIT", "")
 		return
